@@ -1353,6 +1353,7 @@ const icons={
  wallet:'<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/>',
  chart:'<path d="M4 20V4M4 20h16M8 16v-5M13 16V8M18 16v-3"/>',
  cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ car:'<path d="M5 16l1.6-5.6A2 2 0 018.5 9h7a2 2 0 011.9 1.4L19 16"/><rect x="3" y="16" width="18" height="4" rx="1.5"/><path d="M7 20v1.5M17 20v1.5"/>',
  lager:'<path d="M3 8l9-5 9 5v10l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/>',
  geraete:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
  kasse:'<rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M6 7V5h12v2"/>',
@@ -1373,8 +1374,8 @@ const DEFAULT=()=>({v:1,
   {id:uid()+"e",bez:"Behandlung eingewachsener Nagel",preis:35,mwst:0,einheit:"Stück",aktiv:true},
   {id:uid()+"f",bez:"Anfahrtspauschale Hausbesuch",preis:8,mwst:0,einheit:"Stück",aktiv:true},
   {id:uid()+"g",bez:"Anfahrt je km",preis:1,mwst:0,einheit:"km",aktiv:true}],
- patienten:[],behandlungen:[],rechnungen:[],ausgaben:[],termine:[],befunde:[],artikel:[],lagerlog:[],lieferanten:[],geraete:[],hygiene:[],kasse:[]});
-const fixDB=()=>{DB.rechnungen.forEach(r=>{r.pos=r.pos||[]});["termine","befunde","artikel","lagerlog","lieferanten","geraete","hygiene","kasse"].forEach(k=>{DB[k]=DB[k]||[]})};
+ patienten:[],behandlungen:[],rechnungen:[],ausgaben:[],termine:[],befunde:[],artikel:[],lagerlog:[],lieferanten:[],geraete:[],hygiene:[],kasse:[],fahrten:[]});
+const fixDB=()=>{DB.rechnungen.forEach(r=>{r.pos=r.pos||[]});["termine","befunde","artikel","lagerlog","lieferanten","geraete","hygiene","kasse","fahrten"].forEach(k=>{DB[k]=DB[k]||[]})};
 let DB=null, ui={view:"home",id:null,sub:null,filter:"offen",year:new Date().getFullYear(),q:"",day:today()};
 
 /* Speicher: IndexedDB, Rückfall localStorage */
@@ -1398,11 +1399,11 @@ const patName=p=>p?[p.nachname,p.vorname].filter(Boolean).join(", "):"(gelöscht
 const leist=id=>DB.leistungen.find(l=>l.id===id);
 
 /* ---------- UI-Grundgerüst ---------- */
-const NAV=[["home","Start","home"],["termine","Termine","cal"],["patienten","Patienten","users"],["rechnungen","Rechnungen","doc"],["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["kasse","Kassenbuch","kasse"],["lager","Lager","lager"],["geraete","Geräte & Hygiene","geraete"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
+const NAV=[["home","Start","home"],["termine","Termine","cal"],["patienten","Patienten","users"],["rechnungen","Rechnungen","doc"],["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["fahrten","Fahrtenbuch","car"],["kasse","Kassenbuch","kasse"],["lager","Lager","lager"],["geraete","Geräte & Hygiene","geraete"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
 const nav=(v,id=null,sub=null)=>{ui.view=v;ui.id=id;ui.sub=sub;render();window.scrollTo(0,0)};
 function toast(t){document.querySelectorAll(".toast").forEach(x=>x.remove());const e=document.createElement("div");e.className="toast";e.setAttribute("role","status");e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
 function render(){
-  const cur=({patient:"patienten",einw:"patienten",rechnung:"rechnungen",beleg:"rechnungen",lieferanten:"ausgaben",hygdruck:"geraete"})[ui.view]||ui.view;const TAB=["home","termine","patienten","rechnungen"],curTab=TAB.includes(cur)?cur:"mehr";
+  const cur=({patient:"patienten",einw:"patienten",akte:"patienten",mahnung:"rechnungen",rechnung:"rechnungen",beleg:"rechnungen",lieferanten:"ausgaben",hygdruck:"geraete"})[ui.view]||ui.view;const TAB=["home","termine","patienten","rechnungen"],curTab=TAB.includes(cur)?cur:"mehr";
   const side=NAV.map(([k,l,i])=>`<button data-go="${k}" ${cur===k?'aria-current="page"':""}>${ic(i)}${l}</button>`).join("");
   const tabs=TAB.map(k=>NAV.find(n=>n[0]===k)).map(([k,l,i])=>`<button data-go="${k}" ${curTab===k?'aria-current="page"':""}>${ic(i)}${l}</button>`).join("")+`<button data-go="mehr" ${curTab==="mehr"?'aria-current="page"':""}>${ic("more")}Mehr</button>`;
   $("#app").innerHTML=`<nav class="side" aria-label="Hauptmenü"><div class="brand">${DB.praxis.logo?`<img class="logo-side" src="${DB.praxis.logo}" alt="">`:""}${esc(DB.praxis.name)}<small>Praxisbuch</small></div>${side}<div class="grow"></div></nav>
@@ -1410,7 +1411,7 @@ function render(){
   if(ui.view==="einw")initSig();
 }
 function view(){switch(ui.view){
- case"home":return vHome();case"termine":return vTermine();case"mehr":return vMehr();case"kasse":return vKasse();case"lager":return vLager();case"geraete":return vGeraete();case"lieferanten":return vLieferanten();case"einw":return vEinw();case"hygdruck":return vHygDruck();case"patienten":return vPatienten();case"patient":return vPatient();
+ case"home":return vHome();case"termine":return vTermine();case"mehr":return vMehr();case"kasse":return vKasse();case"lager":return vLager();case"geraete":return vGeraete();case"lieferanten":return vLieferanten();case"einw":return vEinw();case"hygdruck":return vHygDruck();case"fahrten":return vFahrten();case"mahnung":return vMahnung();case"akte":return vAkte();case"patienten":return vPatienten();case"patient":return vPatient();
  case"rechnungen":return vRechnungen();case"rechnung":return vRechnung();case"beleg":return vBeleg();
  case"preise":return vPreise();case"ausgaben":return vAusgaben();case"auswertung":return vAuswertung();case"einstellungen":return vEinst();}
  return""}
@@ -1464,7 +1465,7 @@ function vPatient(){
   return `<div class="bar"><button class="btn small" data-go="patienten">‹ Patienten</button></div>
   <h1>${esc(patName(p))}</h1><p class="sub">${esc([p.anrede,p.geb?"geb. "+dt(p.geb):""].filter(Boolean).join(" · "))}</p>
   <div class="card"><div class="s" style="color:var(--muted)">${esc([p.strasse,[p.plz,p.ort].filter(Boolean).join(" ")].filter(Boolean).join(", "))||"Keine Anschrift"}<br>${esc([p.telefon,p.email].filter(Boolean).join(" · "))}${p.kasse?"<br>Kasse: "+esc(p.kasse):""}${p.hinweis?"<br><b style='color:var(--fg)'>Hinweis:</b> "+esc(p.hinweis):""}</div>
-  <div class="bar" style="margin-bottom:0"><button class="btn small" data-act="editPatient" data-id="${p.id}">Bearbeiten</button><button class="btn small danger" data-act="delPatient" data-id="${p.id}">Löschen</button></div></div>
+  <div class="bar" style="margin-bottom:0"><button class="btn small" data-act="editPatient" data-id="${p.id}">Bearbeiten</button><button class="btn small" data-go="akte" data-id="${p.id}">Patientenakte (PDF)</button><button class="btn small danger" data-act="delPatient" data-id="${p.id}">Löschen</button></div></div>
   <div class="bar" style="margin-top:22px"><h2 style="margin:0">Behandlungen</h2><span class="spacer"></span><button class="btn primary small" data-act="neuBeh" data-id="${p.id}">Neue Behandlung</button></div>
   <div class="list">${beh.length?beh.map(b=>`<div class="row" tabindex="0" data-act="editBeh" data-id="${b.id}"><div class="main"><div class="t">${dt(b.datum)}</div><div class="s">${esc(behText(b))}${b.notiz?" · "+esc(b.notiz):""}</div></div>${b.rechnung?'<span class="pill good">abgerechnet</span>':'<span class="pill warn">offen</span>'}</div>`).join(""):'<div class="empty">Noch keine Behandlung erfasst.</div>'}</div>
   ${unb?`<div class="bar"><button class="btn primary" data-act="rechnungAusBeh" data-id="${p.id}">Rechnung aus ${unb} offenen Behandlung${unb>1?"en":""} erstellen</button></div>`:""}
@@ -1495,7 +1496,7 @@ function vRechnung(){
   const r=draft;if(!r)return`<p>Keine Rechnung geöffnet.</p>`;const s=sums(r),ro=r.storno||!!r.bezahlt;
   return `<div class="bar"><button class="btn small" data-go="rechnungen">‹ Rechnungen</button></div>
   <h1>${r.neu?"Neue Rechnung":"Rechnung "+esc(r.nr)}</h1>
-  <p class="sub">${r.neu?"Die Nummer wird beim Speichern vergeben.":(()=>{const[t,c]=status(r);return `<span class="pill ${c}">${t}</span>`})()}</p>
+  <p class="sub">${r.neu?"Die Nummer wird beim Speichern vergeben.":(()=>{const[t,c]=status(r);return `<span class="pill ${c}">${t}</span>`+mahnInfo(r)})()}</p>
   <form data-form="rechnung"><div class="grid">
    <label class="f wide">Patient *<select name="patient" required ${ro?"disabled":""}><option value="">– wählen –</option>${DB.patienten.slice().sort((a,b)=>patName(a).localeCompare(patName(b),"de")).map(p=>`<option value="${p.id}" ${r.patient===p.id?"selected":""}>${esc(patName(p))}</option>`).join("")}</select></label>
    <label class="f">Rechnungsdatum<input type="date" name="datum" value="${r.datum}" ${ro?"disabled":""}></label>
@@ -1511,7 +1512,7 @@ function vRechnung(){
   ${r.bezahlt?`<div class="note ok">Bezahlt am ${dt(r.bezahlt)}${r.zahlart?" ("+esc(r.zahlart)+")":""}.</div>`:""}
   <div class="bar">${ro?"":'<button class="btn primary" type="submit">Speichern</button>'}
    ${!r.neu?'<button class="btn" type="button" data-act="beleg">Ansehen / Drucken</button>':""}
-   ${!r.neu&&!r.bezahlt&&!r.storno?'<button class="btn" type="button" data-act="bezahlt">Als bezahlt buchen</button><button class="btn danger" type="button" data-act="storno">Stornieren</button>':""}
+   ${!r.neu&&!r.bezahlt&&!r.storno?'<button class="btn" type="button" data-act="bezahlt">Als bezahlt buchen</button><button class="btn" type="button" data-act="mahnOpen">Zahlungserinnerung / Mahnung</button><button class="btn danger" type="button" data-act="storno">Stornieren</button>':""}
    ${r.bezahlt&&!r.storno?'<button class="btn" type="button" data-act="unpaid">Zahlung zurücknehmen</button>':""}</div></form>`}
 function posForm(p,i){p=p||{menge:1,rabatt:0};
   const opts=DB.leistungen.filter(l=>l.aktiv).map(l=>`<option value="${l.id}" data-p="${l.preis}" data-m="${l.mwst}" data-u="${esc(l.einheit)}" ${p.lid===l.id?"selected":""}>${esc(l.bez)}</option>`).join("");
@@ -1614,6 +1615,7 @@ function vEinst(){const P=DB.praxis,f=(l,n,x="")=>`<label class="f ${x}">${l}<in
   <h2>Logo</h2><div class="card"><p class="sub" style="margin-top:0">Das Logo erscheint oben auf jeder Rechnung und im Menü. Am besten ein Bild (PNG oder JPG) mit weißem oder transparentem Hintergrund.</p>${P.logo?`<img class="logo-prev" src="${P.logo}" alt="Aktuelles Logo">`:""}<div class="bar" style="margin:0"><label class="btn primary" style="cursor:pointer">${P.logo?"Anderes Logo wählen":"Logo auswählen"}<input id="logoF" type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>${P.logo?'<button class="btn danger" data-act="noLogo">Logo entfernen</button>':""}</div></div>
   <h2>Schutz mit Code</h2><div class="card"><p class="sub" style="margin-top:0">Patientendaten sind Gesundheitsdaten. Mit einem Code bleibt die App auch bei verlorenem, entsperrtem iPad geschlossen. Zusätzlich sollte das iPad selbst eine Code-Sperre haben.</p><div class="bar" style="margin:0">${P.pinHash?'<button class="btn" data-act="setPin">Code ändern</button><button class="btn danger" data-act="noPin">Code entfernen</button>':'<button class="btn primary" data-act="setPin">Code festlegen</button>'}${P.pinHash?'<button class="btn" data-act="lockNow">Jetzt sperren</button>':""}</div></div>
   <h2>Sicherung</h2><div class="card"><div class="note">Alle Daten liegen nur auf diesem iPad. Gehen Gerät oder Browserdaten verloren, sind sie weg. Bitte erstellen Sie regelmäßig eine Sicherung und legen Sie sie in iCloud Drive oder per E-Mail ab.${DB.lastBackup?`<br>Letzte Sicherung: ${new Date(DB.lastBackup).toLocaleString("de-DE")}`:"<br>Es wurde noch keine Sicherung erstellt."}</div>
+  <label class="f" style="flex-direction:row;align-items:center;gap:10px;margin:0 0 12px">Sicherungs-Erinnerung nach <select id="bkDays" style="min-height:var(--tap);border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--panel)">${[[0,"nie"],[3,"3 Tagen"],[7,"7 Tagen"],[14,"14 Tagen"],[30,"30 Tagen"]].map(([v,l])=>`<option value="${v}" ${(DB.praxis.bkDays??7)===v?"selected":""}>${l}</option>`).join("")}</select></label>
   <div class="bar" style="margin-bottom:0"><button class="btn primary" data-act="backup">Sicherung erstellen</button><button class="btn" data-act="restore">Sicherung einspielen</button></div></div>
   <h2>Alle Daten löschen</h2><div class="bar"><button class="btn danger" data-act="wipe">Alle Daten löschen</button></div>`}
 
@@ -1698,12 +1700,17 @@ const MON=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","D
 const numShort=n=>String(Math.round(pnum(n)*100)/100).replace(".",",");
 const csvRow=r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(";");
 const csvOut=(name,rows)=>download(name,"﻿"+rows.map(csvRow).join("\n"),"text/csv");
-function vMehr(){const it=[["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["lieferanten","Lieferanten","users"],["kasse","Kassenbuch","kasse"],["lager","Lager","lager"],["geraete","Geräte & Hygiene","geraete"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
+function vMehr(){const it=[["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["lieferanten","Lieferanten","users"],["fahrten","Fahrtenbuch","car"],["kasse","Kassenbuch","kasse"],["lager","Lager","lager"],["geraete","Geräte & Hygiene","geraete"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
   return `<h1>Mehr</h1><p class="sub">Weitere Bereiche der Praxis.</p><div class="more">${it.map(([k,l,i])=>`<button class="mbtn" data-go="${k}">${ic(i)}<span>${esc(l)}</span></button>`).join("")}</div>`}
 function hinweise(){const h=[],low=DB.artikel.filter(a=>pnum(a.min)>0&&pnum(a.bestand)<=pnum(a.min));
   if(low.length)h.push(`<div class="note" data-go="lager" style="cursor:pointer"><b>Nachbestellen:</b> ${low.map(a=>esc(a.bez)).join(", ")}</div>`);
   const w=DB.geraete.filter(g=>{const f=wartungFaellig(g);return f&&f<=addDays(today(),14)});
   if(w.length)h.push(`<div class="note" data-go="geraete" style="cursor:pointer"><b>Wartung fällig:</b> ${w.map(g=>esc(g.bez)+" ("+dt(wartungFaellig(g))+")").join(", ")}</div>`);
+  const ue=DB.rechnungen.filter(r=>!r.storno&&!r.bezahlt&&faellig(r)<today());
+  if(ue.length)h.unshift(`<div class="note" data-go="rechnungen" style="cursor:pointer"><b>Überfällig:</b> ${ue.length} Rechnung${ue.length>1?"en":""} über ${eur(r2(ue.reduce((t,r)=>t+sums(r).brutto,0)))}. Zum Erinnern oder Mahnen die Rechnung öffnen.</div>`);
+  const bk=DB.praxis.bkDays??7;
+  if(bk>0&&(DB.patienten.length||DB.rechnungen.length)){const age=DB.lastBackup?Math.floor((Date.now()-DB.lastBackup)/864e5):null;
+    if(age===null||age>=bk)h.unshift(`<div class="note"><b>Sicherung fällig:</b> ${age===null?"Es wurde noch keine Sicherung erstellt.":"Die letzte Sicherung ist "+age+" Tag"+(age===1?"":"e")+" alt."} <button class="btn small primary" style="margin-left:8px" data-act="backup">Jetzt sichern</button></div>`)}
   return h.join("")}
 
 /* ---------- v5: Anamnese und Einwilligung ---------- */
@@ -1836,6 +1843,71 @@ function csvEin(y){const A=auswertung(y),rows=[["Bezahlt am","Rechnungsnr.","Rec
 function csvAus(y){const A=auswertung(y),rows=[["Datum","Beleg-Nr.","Beschreibung","Lieferant","Kategorie","Netto","MwSt-Satz %","Vorsteuer","Brutto"]];A.out.forEach(a=>{const b=pnum(a.brutto),m=r2(b*pnum(a.mwst)/(100+pnum(a.mwst)));rows.push([a.datum,a.beleg||"",a.beschr||"",a.lief||"",a.kat,num(r2(b-m)),num(pnum(a.mwst)),num(m),num(b)])});return rows}
 function csvKasse(von,bis){const R=kasseRun(von,bis),rows=[["Datum","Text","Beleg","Betrag","Saldo"],["","Anfangsbestand","",""  ,num(R.start)]];R.lines.forEach(l=>rows.push([l.datum,(l.auto?l.text.replace(/ · .*$/," (Rechnung)"):l.text),l.beleg,num(l.betrag),num(l.saldo)]));rows.push(["","Endbestand","","",num(R.end)]);return rows}
 
+
+/* ---------- v6: Fahrtenbuch ---------- */
+const FAHRT_ART=["betrieblich","privat","Wohnung – Betriebsstätte"];
+function vFahrten(){if(!ui.fm)ui.fm=today().slice(0,7);const m=ui.fm,y=m.slice(0,4),P=DB.praxis;
+  const mon=DB.fahrten.filter(f=>f.datum.startsWith(m)).sort((a,b)=>a.datum<b.datum?-1:a.datum>b.datum?1:0),yr=DB.fahrten.filter(f=>f.datum.startsWith(y));
+  const sum=(l,a)=>r2(l.filter(f=>!a||f.art===a).reduce((t,f)=>t+pnum(f.km),0)),bet=sum(yr,"betrieblich"),ges=sum(yr),pa=pnum(P.kmPausch??.3);
+  const nm=new Date(m+"-15T12:00:00").toLocaleDateString("de-DE",{month:"long",year:"numeric"});
+  return `<h1>Fahrtenbuch</h1><p class="sub">Fahrten mit Datum, Strecke, Zweck und Kilometern.</p>
+  <div class="bar"><button class="btn small" data-act="fmPrev" aria-label="Vorheriger Monat">‹</button><b style="min-width:150px;text-align:center">${nm}</b><button class="btn small" data-act="fmNext" aria-label="Nächster Monat">›</button><span class="spacer"></span><button class="btn primary" data-act="neuFahrt">Neue Fahrt</button></div>
+  <div class="stats"><div class="stat"><div class="k">Monat betrieblich</div><div class="v">${numShort(sum(mon,"betrieblich"))} km</div></div><div class="stat"><div class="k">Monat privat</div><div class="v">${numShort(sum(mon,"privat"))} km</div></div><div class="stat"><div class="k">Jahr ${y} betrieblich</div><div class="v">${numShort(bet)} km</div></div><div class="stat"><div class="k">Betriebsanteil ${y}</div><div class="v">${ges?Math.round(bet/ges*100):0} %</div></div></div>
+  <div class="card tw"><table><thead><tr><th>Datum</th><th>Strecke</th><th>Zweck / Patient</th><th>Art</th><th class="r">km</th></tr></thead><tbody>${mon.map(f=>{const p=f.patient&&pat(f.patient);return `<tr data-act="editFahrt" data-id="${f.id}" style="cursor:pointer"><td>${dt(f.datum)}</td><td>${esc(f.von||"")}${f.nach?" → "+esc(f.nach):""}${f.tachoA||f.tachoE?`<br><small style="color:var(--muted)">km-Stand ${esc(String(f.tachoA||""))} – ${esc(String(f.tachoE||""))}</small>`:""}</td><td>${esc(f.zweck||"")}${p?"<br><small>"+esc(patName(p))+"</small>":""}</td><td>${esc(f.art)}</td><td class="r">${numShort(f.km)}</td></tr>`}).join("")||'<tr><td colspan="5" class="empty">Keine Fahrten in diesem Monat.</td></tr>'}</tbody></table></div>
+  <div class="bar"><button class="btn" data-act="fahrtBeh">Aus Behandlungen übernehmen</button><button class="btn" data-act="csvFahrtM">CSV Monat</button><button class="btn" data-act="csvFahrtJ">CSV Jahr</button><button class="btn" data-act="print">Drucken</button></div>
+  <div class="note">„Aus Behandlungen übernehmen“ legt für jede Behandlung dieses Monats mit eingetragenen Kilometern eine betriebliche Fahrt an (Praxis → Patientenadresse). Als Orientierung: ${numShort(bet)} km × ${num(pa)} € Kilometerpauschale = ${num(r2(bet*pa))} €. Ob und wie Sie Fahrtkosten ansetzen, klären Sie bitte mit Ihrem Steuerberater.</div>`}
+function fahrtForm(f){f=f||{};const P=DB.praxis;return `<form data-form="fahrt" data-id="${f.id||""}"><div class="grid">
+  <label class="f">Datum<input type="date" name="datum" value="${f.datum||today()}" required></label>
+  <label class="f">Art<select name="art">${FAHRT_ART.map(o=>`<option ${(f.art||"betrieblich")===o?"selected":""}>${o}</option>`).join("")}</select></label>
+  <label class="f">Start<input name="von" value="${esc(f.von??[P.strasse,P.ort].filter(Boolean).join(", "))}"></label>
+  <label class="f">Ziel<input name="nach" value="${esc(f.nach||"")}"></label>
+  <label class="f wide">Zweck<input name="zweck" value="${esc(f.zweck??"Hausbesuch Fußpflege")}"></label>
+  <label class="f wide">Patient (Geschäftspartner)<select name="patient"><option value="">–</option>${DB.patienten.slice().sort((a,b)=>patName(a).localeCompare(patName(b),"de")).map(x=>`<option value="${x.id}" ${f.patient===x.id?"selected":""}>${esc(patName(x))}</option>`).join("")}</select></label>
+  <label class="f">km-Stand Anfang<input name="tachoA" inputmode="numeric" value="${esc(f.tachoA||"")}"></label><label class="f">km-Stand Ende<input name="tachoE" inputmode="numeric" value="${esc(f.tachoE||"")}"></label>
+  <label class="f wide">Gefahrene Kilometer (leer = aus km-Stand)<input name="km" inputmode="decimal" value="${f.km!==undefined?esc(numShort(f.km)):""}"></label></div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button>${f.id?`<button class="btn danger" type="button" data-act="delFahrt" data-id="${f.id}">Löschen</button>`:""}<button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+function csvFahrt(von,bis){const rows=[["Datum","Start","Ziel","Zweck","Art","km-Stand Anfang","km-Stand Ende","Kilometer"]];DB.fahrten.filter(f=>f.datum>=von&&f.datum<=bis).sort((a,b)=>a.datum<b.datum?-1:1).forEach(f=>rows.push([f.datum,f.von||"",f.nach||"",f.zweck||"",f.art,f.tachoA||"",f.tachoE||"",numShort(f.km)]));return rows}
+
+/* ---------- v6: Zahlungserinnerung und Mahnung ---------- */
+const MSTUFE=["Zahlungserinnerung","1. Mahnung","2. Mahnung (letzte Mahnung)"];
+let mf={stufe:0,datum:"",frist:7,gebuehr:0};
+function mahnInfo(r){const l=(r.mahn||[]).slice(-1)[0];return l?` <span class="pill warn">${MSTUFE[l.stufe]} am ${dt(l.datum)}</span>`:""}
+function mahnAbs(r,p,s){const m=mf,fr=dt(addDays(m.datum,+m.frist||0)),bet=num(s.brutto)+" €",geb=pnum(m.gebuehr),tot=num(r2(s.brutto+geb))+" €",rd=dt(r.datum),fz=dt(faellig(r));
+  const anr=p?.anrede==="Herr"?"Sehr geehrter Herr "+p.nachname+",":p?.anrede==="Frau"?"Sehr geehrte Frau "+p.nachname+",":"Sehr geehrte Damen und Herren,";
+  const gz=geb>0?` (Rechnungsbetrag ${bet} zuzüglich Mahngebühr ${num(geb)} €)`:"";
+  let a;
+  if(m.stufe===0)a=[`sicher ist es Ihnen entgangen: Für unsere Rechnung ${r.nr} vom ${rd} über ${bet} konnten wir bis heute keinen Zahlungseingang feststellen. Das Zahlungsziel war der ${fz}.`,`Bitte überweisen Sie den offenen Betrag von ${tot}${geb>0?" (inklusive Mahngebühr)":""} bis zum ${fr} auf das unten genannte Konto. Sollte sich Ihre Zahlung mit diesem Schreiben überschnitten haben, betrachten Sie es bitte als gegenstandslos.`];
+  else if(m.stufe===1)a=[`trotz unserer Zahlungserinnerung konnten wir für die Rechnung ${r.nr} vom ${rd} über ${bet} noch keinen Zahlungseingang feststellen.`,`Wir bitten Sie, den Gesamtbetrag von ${tot}${gz} bis zum ${fr} auf das unten genannte Konto zu überweisen.`];
+  else a=[`leider ist die Rechnung ${r.nr} vom ${rd} über ${bet} trotz Zahlungserinnerung und Mahnung weiterhin offen.`,`Wir fordern Sie letztmalig auf, den Gesamtbetrag von ${tot}${gz} bis zum ${fr} zu überweisen. Andernfalls behalten wir uns vor, die Forderung gerichtlich geltend zu machen. Die dadurch entstehenden weiteren Kosten gehen zu Ihren Lasten.`];
+  return{anr,a,tot,fr,geb}}
+function vMahnung(){const r=draft;if(!r||r.neu)return"<p>Keine Rechnung geöffnet.</p>";if(!mf.datum)mf.datum=today();
+  const p=pat(r.patient),P=DB.praxis,s=sums(r),M=mahnAbs(r,p,s),sel=(k,l)=>`<option value="${k}" ${mf.stufe===k?"selected":""}>${l}</option>`;
+  const hist=(r.mahn||[]).map(h=>`${MSTUFE[h.stufe]} am ${dt(h.datum)}`).join("; ");
+  return `<div class="noprint"><div class="bar"><button class="btn small" data-go="rechnung" data-id="${r.id}">‹ Zurück zur Rechnung</button></div><h1>Zahlungserinnerung / Mahnung</h1>${hist?`<p class="sub">Bisher: ${esc(hist)}</p>`:""}
+  <div class="card"><div class="grid"><label class="f wide">Art<select data-mf="stufe">${MSTUFE.map((l,i)=>sel(i,l)).join("")}</select></label>
+  <label class="f">Datum<input type="date" data-mf="datum" value="${mf.datum}"></label><label class="f">Zahlungsfrist (Tage)<input data-mf="frist" inputmode="numeric" value="${esc(String(mf.frist))}"></label>
+  <label class="f">Mahngebühr € (nur wenn angemessen)<input data-mf="gebuehr" inputmode="decimal" value="${esc(String(mf.gebuehr).replace(".",","))}"></label></div>
+  <div class="bar" style="margin:12px 0 0"><button class="btn primary" data-act="print">Drucken / PDF</button><button class="btn" data-act="mahnCopy">Text kopieren</button><button class="btn" data-act="mahnSave">Als versendet vermerken</button></div></div></div>
+  <div class="paper" id="paper" style="margin-top:14px">${P.logo?`<div class="logo-top"><img src="${P.logo}" alt="Logo"></div>`:""}
+  <div class="row2"><div><b>${esc(P.name)}</b><br>${esc(P.inhaber||"")}<br>${esc(P.strasse||"")}<br>${esc([P.plz,P.ort].filter(Boolean).join(" "))}</div><div style="text-align:right">${esc(P.ort||"")}${P.ort?", ":""}${dt(mf.datum)}</div></div>
+  <p style="margin:26px 0 18px">${esc(p?.anrede||"")} ${esc(p?.vorname||"")} ${esc(p?.nachname||"")}<br>${esc(p?.strasse||"")}<br>${esc([p?.plz,p?.ort].filter(Boolean).join(" "))}</p>
+  <h3 style="font-size:17px">${MSTUFE[mf.stufe]} – Rechnung ${esc(r.nr)}</h3><p>${esc(M.anr)}</p>${M.a.map(x=>`<p>${esc(x)}</p>`).join("")}
+  <table class="sm" style="max-width:420px"><tbody><tr><td>Rechnung ${esc(r.nr)} vom ${dt(r.datum)}</td><td class="r">${num(s.brutto)} €</td></tr>${M.geb>0?`<tr><td>Mahngebühr</td><td class="r">${num(M.geb)} €</td></tr>`:""}<tr class="tot"><td>Zu zahlen bis ${M.fr}</td><td class="r">${M.tot}</td></tr></tbody></table>
+  <div class="payrow" style="margin-top:14px"><p>${P.iban?`Bitte überweisen Sie auf das Konto ${esc(P.iban)}${P.bic?" ("+esc(P.bic)+")":""}${P.bank?", "+esc(P.bank):""}.`:""}</p>${girocode({nr:r.nr},{brutto:r2(s.brutto+M.geb)})}</div>
+  <p style="margin-top:18px">Mit freundlichen Grüßen<br>${esc(P.inhaber||P.name)}</p></div>`}
+
+/* ---------- v6: Patientenakte ---------- */
+function vAkte(){const p=pat(ui.id);if(!p)return"<p>Patient nicht gefunden.</p>";const P=DB.praxis,fo=ui.akteFotos!==false,h3=t=>`<h3 style="font-size:15px;margin:20px 0 6px;border-bottom:1px solid #bbb;padding-bottom:3px">${t}</h3>`;
+  const beh=DB.behandlungen.filter(b=>b.patient===p.id).sort((a,b)=>a.datum<b.datum?-1:1),rech=DB.rechnungen.filter(r=>r.patient===p.id).sort((a,b)=>a.datum<b.datum?-1:1),bef=DB.befunde.filter(b=>b.patient===p.id).sort((a,b)=>a.datum<b.datum?-1:1),a=p.anam,e=p.einw;
+  return `<div class="bar noprint"><button class="btn small" data-go="patient" data-id="${p.id}">‹ Zurück</button><label class="chk"><input type="checkbox" id="akteFotos" ${fo?"checked":""}> Fotos einbeziehen</label><span class="spacer"></span><button class="btn primary" data-act="print">Drucken / PDF</button></div>
+  <div class="paper" id="paper">${P.logo?`<div class="logo-top"><img src="${P.logo}" alt="Logo"></div>`:""}<h3>${esc(P.name)}</h3><p style="margin:2px 0 8px">Patientenakte · Stand ${dt(today())}</p>
+  ${h3("Stammdaten")}<p>${esc([p.anrede,p.vorname,p.nachname].filter(Boolean).join(" "))}${p.geb?", geb. "+dt(p.geb):""}<br>${esc([p.strasse,[p.plz,p.ort].filter(Boolean).join(" ")].filter(Boolean).join(", "))}<br>${esc([p.telefon,p.email].filter(Boolean).join(" · "))}${p.kasse?"<br>Kasse: "+esc(p.kasse):""}${p.hinweis?"<br>Hinweis: "+esc(p.hinweis):""}</p>
+  ${h3("Anamnese")}${a?`<p>Erhoben am ${dt(a.datum)}<br>Allergien: ${esc(a.allergien||"keine angegeben")}<br>Medikamente: ${esc(a.med||"keine angegeben")}<br>Vorerkrankungen: ${esc((a.vor||[]).join(", ")||"keine angegeben")}${a.sonst?"<br>Sonstiges: "+esc(a.sonst):""}</p>`:"<p>Nicht erfasst.</p>"}
+  ${h3("Datenschutz-Einwilligung")}<p>${e?"Unterschrieben am "+dt(e.datum):"Nicht erteilt."}</p>${e?`<img src="${e.sig}" alt="Unterschrift" style="max-height:60px">`:""}
+  ${h3("Fußbefunde")}${bef.length?bef.map(b=>`<div style="margin:0 0 12px;break-inside:avoid"><b>${dt(b.datum)}</b><br>${esc((b.merk||[]).join(", "))}${b.notiz?"<br>Befund: "+esc(b.notiz):""}${b.massn?"<br>Maßnahmen: "+esc(b.massn):""}${b.empf?"<br>Empfehlung: "+esc(b.empf):""}${fo&&(b.fotos||[]).length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">${b.fotos.map(f=>`<figure style="margin:0"><img src="${f.d}" alt="${esc(f.cap||"")}" style="height:110px;width:auto;border:1px solid #ccc"><figcaption style="font-size:11px">${esc(f.cap||"")}</figcaption></figure>`).join("")}</div>`:""}</div>`).join(""):"<p>Keine Befunde.</p>"}
+  ${h3("Behandlungen")}<table class="sm"><thead><tr><th>Datum</th><th>Leistungen</th><th>Notiz</th></tr></thead><tbody>${beh.map(b=>`<tr><td>${dt(b.datum)}</td><td>${esc(behText(b))}</td><td>${esc(b.notiz||"")}</td></tr>`).join("")||'<tr><td colspan="3">Keine Behandlungen.</td></tr>'}</tbody></table>
+  ${h3("Rechnungen")}<table class="sm"><thead><tr><th>Nummer</th><th>Datum</th><th class="r">Betrag</th><th>Status</th></tr></thead><tbody>${rech.map(r=>`<tr><td>${esc(r.nr)}</td><td>${dt(r.datum)}</td><td class="r">${num(sums(r).brutto)} €</td><td>${status(r)[0]}</td></tr>`).join("")||'<tr><td colspan="4">Keine Rechnungen.</td></tr>'}</tbody></table></div>`}
+
 /* ---------- Ereignisse ---------- */
 document.addEventListener("click",async e=>{
   const g=e.target.closest("[data-go]");if(g&&!e.target.closest("[data-act]")){const v=g.dataset.go;if(v==="rechnung"){const r=DB.rechnungen.find(x=>x.id===g.dataset.id)||draft;draft=JSON.parse(JSON.stringify(r));draft.neu=false}nav(v,g.dataset.id||null);return}
@@ -1845,6 +1917,16 @@ document.addEventListener("click",async e=>{
   if(act==="bg"){if(e.target===a)closeSheet();return}
   switch(act){
   case"closeSheet":closeSheet();break;
+  case"fmPrev":case"fmNext":{const d=new Date(ui.fm+"-15T12:00:00");d.setMonth(d.getMonth()+(act==="fmNext"?1:-1));ui.fm=d.toISOString().slice(0,7);render();break}
+  case"neuFahrt":sheet(fahrtForm(),"Neue Fahrt");break;
+  case"editFahrt":sheet(fahrtForm(DB.fahrten.find(x=>x.id===id)),"Fahrt");break;
+  case"delFahrt":confirmBox("Fahrt löschen?","Löschen",()=>{mutate(d=>d.fahrten=d.fahrten.filter(x=>x.id!==id));render()});break;
+  case"fahrtBeh":{const m=ui.fm,P=DB.praxis;let n=0;mutate(d=>{d.behandlungen.filter(b=>b.datum.startsWith(m)&&pnum(b.km)>0&&!d.fahrten.some(f=>f.beh===b.id)).forEach(b=>{const p=d.patienten.find(x=>x.id===b.patient);d.fahrten.push({id:uid(),beh:b.id,datum:b.datum,von:[P.strasse,P.ort].filter(Boolean).join(", "),nach:adresse(p),zweck:"Hausbesuch Fußpflege",patient:b.patient,art:"betrieblich",km:pnum(b.km)});n++})});render();toast(n?n+" Fahrt"+(n>1?"en":"")+" übernommen":"Keine neuen Behandlungen mit Kilometern");break}
+  case"csvFahrtM":csvOut(`Fahrtenbuch-${ui.fm}.csv`,csvFahrt(ui.fm+"-01",ui.fm+"-31"));break;
+  case"csvFahrtJ":csvOut(`Fahrtenbuch-${ui.fm.slice(0,4)}.csv`,csvFahrt(ui.fm.slice(0,4)+"-01-01",ui.fm.slice(0,4)+"-12-31"));break;
+  case"mahnOpen":{if(!(await saveDraftFromForm()))break;const n=(draft.mahn||[]).length;mf={stufe:Math.min(n,2),datum:today(),frist:7,gebuehr:0};nav("mahnung");break}
+  case"mahnSave":mutate(d=>{const x=d.rechnungen.find(z=>z.id===draft.id);x.mahn=x.mahn||[];x.mahn.push({stufe:mf.stufe,datum:mf.datum,gebuehr:pnum(mf.gebuehr),frist:+mf.frist||0});draft.mahn=x.mahn.slice()});render();toast("Vermerkt: "+MSTUFE[mf.stufe]);break;
+  case"mahnCopy":{const p=pat(draft.patient),M=mahnAbs(draft,p,sums(draft));copy([MSTUFE[mf.stufe]+" – Rechnung "+draft.nr,"",M.anr,"",...M.a,"","Zu zahlen: "+M.tot+" bis "+M.fr,DB.praxis.iban?"IBAN: "+DB.praxis.iban:"","","Mit freundlichen Grüßen",DB.praxis.inhaber||DB.praxis.name].join("\n"));break}
   case"editAnam":sheet(anamForm(pat(id)),"Anamnese");break;
   case"einwNeu":confirmBox("Die vorhandene Unterschrift löschen und neu unterschreiben lassen?","Neu unterschreiben",()=>{mutate(d=>{delete d.patienten.find(p=>p.id===id).einw});render()});break;
   case"sigClear":initSig();break;
@@ -1929,6 +2011,9 @@ document.addEventListener("input",e=>{if(e.target.id==="q"){ui.q=e.target.value;
 function loadLogo(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const m=700,k=Math.min(1,m/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);let png=c.toDataURL("image/png");if(png.length>400000){x.globalCompositeOperation="destination-over";x.fillStyle="#fff";x.fillRect(0,0,w,h);png=c.toDataURL("image/jpeg",.85)}res(png)};im.onerror=()=>{URL.revokeObjectURL(u);rej()};im.src=u})}
 document.addEventListener("change",async e=>{
   if(e.target.id==="logoF"&&e.target.files[0]){try{const d=await loadLogo(e.target.files[0]);mutate(db=>db.praxis.logo=d);render();toast("Logo gespeichert")}catch(_){toast("Dieses Bild konnte nicht gelesen werden")}return}
+  if(e.target.dataset&&e.target.dataset.mf){mf[e.target.dataset.mf]=e.target.dataset.mf==="stufe"?+e.target.value:e.target.value;render();return}
+  if(e.target.id==="akteFotos"){ui.akteFotos=e.target.checked;render();return}
+  if(e.target.id==="bkDays"){mutate(db=>db.praxis.bkDays=+e.target.value);toast("Gespeichert");return}
   if(e.target.id==="fotoF"){const fs=[...e.target.files];e.target.value="";let n=0;for(const fi of fs){if(befFotos.length>=12){toast("Höchstens 12 Fotos je Befund");break}try{befFotos.push({id:uid(),d:await loadFoto(fi),cap:"Befund"});n++}catch(_){toast("Ein Bild konnte nicht gelesen werden")}}drawFotos();return}
   if(e.target.dataset&&e.target.dataset.cap!==undefined){const f=befFotos[+e.target.dataset.cap];if(f)f.cap=e.target.value;return}
   if(e.target.id==="dayPick"&&e.target.value){ui.day=e.target.value;render();return}
@@ -1944,6 +2029,8 @@ function commitRechnung(){if(!draft.patient){toast("Bitte einen Patienten wähle
 document.addEventListener("submit",async e=>{e.preventDefault();const f=e.target,k=f.dataset.form,d=Object.fromEntries(new FormData(f));
   if(k==="patient"){const id=f.dataset.id;mutate(db=>{const o={anrede:d.anrede,vorname:d.vorname.trim(),nachname:d.nachname.trim(),geb:d.geb,strasse:d.strasse,plz:d.plz,ort:d.ort,telefon:d.telefon,email:d.email,kasse:d.kasse,hinweis:d.hinweis,diabetes:!!d.diabetes,dsgvo:!!d.dsgvo};
     if(id){Object.assign(db.patienten.find(p=>p.id===id),o)}else{o.id=uid();db.patienten.push(o);ui.id=o.id}});closeSheet();if(id)render();else nav("patient",ui.id);toast("Gespeichert")}
+  if(k==="fahrt"){const id=f.dataset.id;let km=pnum(d.km);if(!d.km&&pnum(d.tachoE)>pnum(d.tachoA))km=r2(pnum(d.tachoE)-pnum(d.tachoA));
+    mutate(db=>{const o={datum:d.datum,art:d.art,von:d.von||"",nach:d.nach||"",zweck:d.zweck||"",patient:d.patient||"",tachoA:d.tachoA||"",tachoE:d.tachoE||"",km};if(id)Object.assign(db.fahrten.find(x=>x.id===id),o);else{o.id=uid();db.fahrten.push(o)}});closeSheet();render();toast("Fahrt gespeichert")}
   if(k==="anam"){const id=f.dataset.id,vor=new FormData(f).getAll("vor");mutate(db=>{const p=db.patienten.find(x=>x.id===id);p.anam={datum:d.datum,allergien:d.allergien||"",med:d.med||"",vor,sonst:d.sonst||""};if(vor.includes("Diabetes mellitus"))p.diabetes=true});closeSheet();render();toast("Anamnese gespeichert")}
   if(k==="lief"){const id=f.dataset.id;mutate(db=>{const o={name:d.name.trim(),kontakt:d.kontakt||"",tel:d.tel||"",email:d.email||"",kundennr:d.kundennr||"",notiz:d.notiz||""};if(id)Object.assign(db.lieferanten.find(x=>x.id===id),o);else{o.id=uid();db.lieferanten.push(o)}});closeSheet();render();toast("Gespeichert")}
   if(k==="art"){const id=f.dataset.id;mutate(db=>{const o={bez:d.bez.trim(),einheit:d.einheit,min:pnum(d.min),lief:d.lief||"",notiz:d.notiz||""},b=pnum(d.bestand);
