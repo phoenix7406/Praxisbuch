@@ -120,6 +120,18 @@ a.btn{text-decoration:none;color:inherit}
 .payrow{display:flex;gap:18px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
 .payrow p{flex:1;min-width:200px}
 .giro{text-align:center;color:#111}.giro svg{display:block;margin:0 auto 2px}
+/* v5 */
+:root{--s1:#257de0;--s2:#f47230}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--s1:#338ced;--s2:#e76624}}
+:root[data-theme="dark"]{--s1:#338ced;--s2:#e76624}
+.more{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.mbtn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);min-height:96px;cursor:pointer;font-weight:600;color:var(--fg)}
+.mbtn svg{width:28px;height:28px;color:var(--accent)}
+.sig{display:block;width:100%;max-width:520px;height:170px;border:1px dashed #888;border-radius:8px;background:#fff;touch-action:none;cursor:crosshair}
+.lg{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;margin:0 0 8px}
+.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.chart{width:100%;height:auto;display:block}
+.paper table.sm{font-size:12px}.paper table.sm th,.paper table.sm td{padding:6px 6px}
 /* Rechnungsansicht (Papier) */
 .paper{background:#fff;color:#111;border:1px solid var(--line);border-radius:6px;padding:28px 30px;font-size:14px;line-height:1.4;max-width:800px;margin:0 auto}
 .paper h3{margin:0;font-size:20px}.paper .row2{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
@@ -1341,6 +1353,10 @@ const icons={
  wallet:'<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/>',
  chart:'<path d="M4 20V4M4 20h16M8 16v-5M13 16V8M18 16v-3"/>',
  cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+ lager:'<path d="M3 8l9-5 9 5v10l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v9"/>',
+ geraete:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/>',
+ kasse:'<rect x="3" y="7" width="18" height="12" rx="2"/><circle cx="12" cy="13" r="2.5"/><path d="M6 7V5h12v2"/>',
+ more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'
 };
 const ic=n=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[n]}</svg>`;
@@ -1357,8 +1373,8 @@ const DEFAULT=()=>({v:1,
   {id:uid()+"e",bez:"Behandlung eingewachsener Nagel",preis:35,mwst:0,einheit:"Stück",aktiv:true},
   {id:uid()+"f",bez:"Anfahrtspauschale Hausbesuch",preis:8,mwst:0,einheit:"Stück",aktiv:true},
   {id:uid()+"g",bez:"Anfahrt je km",preis:1,mwst:0,einheit:"km",aktiv:true}],
- patienten:[],behandlungen:[],rechnungen:[],ausgaben:[],termine:[],befunde:[]});
-const fixDB=()=>{DB.rechnungen.forEach(r=>{r.pos=r.pos||[]});DB.termine=DB.termine||[];DB.befunde=DB.befunde||[]};
+ patienten:[],behandlungen:[],rechnungen:[],ausgaben:[],termine:[],befunde:[],artikel:[],lagerlog:[],lieferanten:[],geraete:[],hygiene:[],kasse:[]});
+const fixDB=()=>{DB.rechnungen.forEach(r=>{r.pos=r.pos||[]});["termine","befunde","artikel","lagerlog","lieferanten","geraete","hygiene","kasse"].forEach(k=>{DB[k]=DB[k]||[]})};
 let DB=null, ui={view:"home",id:null,sub:null,filter:"offen",year:new Date().getFullYear(),q:"",day:today()};
 
 /* Speicher: IndexedDB, Rückfall localStorage */
@@ -1382,18 +1398,19 @@ const patName=p=>p?[p.nachname,p.vorname].filter(Boolean).join(", "):"(gelöscht
 const leist=id=>DB.leistungen.find(l=>l.id===id);
 
 /* ---------- UI-Grundgerüst ---------- */
-const NAV=[["home","Start","home"],["termine","Termine","cal"],["patienten","Patienten","users"],["rechnungen","Rechnungen","doc"],["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
+const NAV=[["home","Start","home"],["termine","Termine","cal"],["patienten","Patienten","users"],["rechnungen","Rechnungen","doc"],["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["kasse","Kassenbuch","kasse"],["lager","Lager","lager"],["geraete","Geräte & Hygiene","geraete"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
 const nav=(v,id=null,sub=null)=>{ui.view=v;ui.id=id;ui.sub=sub;render();window.scrollTo(0,0)};
 function toast(t){document.querySelectorAll(".toast").forEach(x=>x.remove());const e=document.createElement("div");e.className="toast";e.setAttribute("role","status");e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2600)}
 function render(){
-  const cur=ui.view==="patient"?"patienten":ui.view==="rechnung"||ui.view==="beleg"?"rechnungen":ui.view;
+  const cur=({patient:"patienten",einw:"patienten",rechnung:"rechnungen",beleg:"rechnungen",lieferanten:"ausgaben",hygdruck:"geraete"})[ui.view]||ui.view;const TAB=["home","termine","patienten","rechnungen"],curTab=TAB.includes(cur)?cur:"mehr";
   const side=NAV.map(([k,l,i])=>`<button data-go="${k}" ${cur===k?'aria-current="page"':""}>${ic(i)}${l}</button>`).join("");
-  const tabs=NAV.filter(n=>n[0]!=="preise"&&n[0]!=="ausgaben").map(([k,l,i])=>`<button data-go="${k}" ${cur===k?'aria-current="page"':""}>${ic(i)}${l==="Einstellungen"?"Einstell.":l}</button>`).join("");
+  const tabs=TAB.map(k=>NAV.find(n=>n[0]===k)).map(([k,l,i])=>`<button data-go="${k}" ${curTab===k?'aria-current="page"':""}>${ic(i)}${l}</button>`).join("")+`<button data-go="mehr" ${curTab==="mehr"?'aria-current="page"':""}>${ic("more")}Mehr</button>`;
   $("#app").innerHTML=`<nav class="side" aria-label="Hauptmenü"><div class="brand">${DB.praxis.logo?`<img class="logo-side" src="${DB.praxis.logo}" alt="">`:""}${esc(DB.praxis.name)}<small>Praxisbuch</small></div>${side}<div class="grow"></div></nav>
   <main id="main">${view()}</main><nav class="tabs" aria-label="Hauptmenü">${tabs}</nav>`;
+  if(ui.view==="einw")initSig();
 }
 function view(){switch(ui.view){
- case"home":return vHome();case"termine":return vTermine();case"patienten":return vPatienten();case"patient":return vPatient();
+ case"home":return vHome();case"termine":return vTermine();case"mehr":return vMehr();case"kasse":return vKasse();case"lager":return vLager();case"geraete":return vGeraete();case"lieferanten":return vLieferanten();case"einw":return vEinw();case"hygdruck":return vHygDruck();case"patienten":return vPatienten();case"patient":return vPatient();
  case"rechnungen":return vRechnungen();case"rechnung":return vRechnung();case"beleg":return vBeleg();
  case"preise":return vPreise();case"ausgaben":return vAusgaben();case"auswertung":return vAuswertung();case"einstellungen":return vEinst();}
  return""}
@@ -1407,6 +1424,7 @@ function vHome(){
   const ausg=DB.ausgaben.filter(a=>a.datum.startsWith(y)).reduce((s,a)=>s+pnum(a.brutto),0);
   return `<h1>Guten Tag</h1><p class="sub">${new Date().toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</p>
   <div class="bar"><button class="btn primary" data-act="neuRechnung">Neue Rechnung</button><button class="btn" data-act="neuTermin">Neuer Termin</button><button class="btn" data-act="neuPatient">Neuer Patient</button></div>
+  ${hinweise()}
   <h2>Heute</h2>${heute.length?`<div class="list">${heute.map(t=>terminRow(t)).join("")}</div>`:'<div class="list"><div class="empty">Heute keine Termine.</div></div>'}
   <div class="stats">
    <div class="stat"><div class="k">Offene Rechnungen</div><div class="v">${eur(offSum)}</div><div class="s">${offen.length} Stück${ueb.length?`, ${ueb.length} überfällig`:""}</div></div>
@@ -1450,7 +1468,7 @@ function vPatient(){
   <div class="bar" style="margin-top:22px"><h2 style="margin:0">Behandlungen</h2><span class="spacer"></span><button class="btn primary small" data-act="neuBeh" data-id="${p.id}">Neue Behandlung</button></div>
   <div class="list">${beh.length?beh.map(b=>`<div class="row" tabindex="0" data-act="editBeh" data-id="${b.id}"><div class="main"><div class="t">${dt(b.datum)}</div><div class="s">${esc(behText(b))}${b.notiz?" · "+esc(b.notiz):""}</div></div>${b.rechnung?'<span class="pill good">abgerechnet</span>':'<span class="pill warn">offen</span>'}</div>`).join(""):'<div class="empty">Noch keine Behandlung erfasst.</div>'}</div>
   ${unb?`<div class="bar"><button class="btn primary" data-act="rechnungAusBeh" data-id="${p.id}">Rechnung aus ${unb} offenen Behandlung${unb>1?"en":""} erstellen</button></div>`:""}
-  ${patTermine(p)}${befundList(p)}
+  ${patExtra(p)}${patTermine(p)}${befundList(p)}
   <h2>Rechnungen</h2>${rechList(rech,"Noch keine Rechnung.")}`}
 const behText=b=>(b.leist||[]).map(id=>leist(id)?.bez).filter(Boolean).join(", ")+(b.km?` · ${b.km} km`:"");
 function behForm(b,pid,tid){b=b||{};const kmL=DB.leistungen.find(l=>l.einheit==="km"&&l.aktiv);
@@ -1542,14 +1560,14 @@ function leistForm(x){x=x||{aktiv:true,einheit:"Stück",mwst:0};
 const KAT=["Material / Verbrauch","Fahrzeug / Fahrtkosten","Instrumente / Geräte","Versicherung","Fortbildung","Büro / Telefon","Miete / Raumkosten","Sonstiges"];
 function vAusgaben(){const l=DB.ausgaben.slice().sort((a,b)=>a.datum<b.datum?1:-1);
   return `<h1>Ausgaben</h1><p class="sub">Betriebsausgaben für die Einnahmen-Überschuss-Rechnung.</p>
-  <div class="bar"><button class="btn primary" data-act="neuAusg">Ausgabe erfassen</button></div>
+  <div class="bar"><button class="btn primary" data-act="neuAusg">Ausgabe erfassen</button><button class="btn" data-go="lieferanten">Lieferanten</button><button class="btn" data-go="kasse">Kassenbuch</button></div>
   <div class="list">${l.length?l.map(a=>`<div class="row" tabindex="0" data-act="editAusg" data-id="${a.id}"><div class="main"><div class="t">${esc(a.beschr||a.kat)}</div><div class="s">${dt(a.datum)} · ${esc(a.kat)}${a.lief?" · "+esc(a.lief):""}</div></div><div class="amt">${eur(pnum(a.brutto))}</div></div>`).join(""):'<div class="empty">Noch keine Ausgaben erfasst.</div>'}</div>`}
 function ausgForm(a){a=a||{datum:today(),mwst:19};
   return `<form data-form="ausg" data-id="${a.id||""}"><div class="grid">
   <label class="f">Datum<input type="date" name="datum" value="${a.datum}" required></label>
   <label class="f">Beleg-Nr.<input name="beleg" value="${esc(a.beleg||"")}"></label>
   <label class="f wide">Beschreibung<input name="beschr" value="${esc(a.beschr||"")}"></label>
-  <label class="f">Lieferant<input name="lief" value="${esc(a.lief||"")}"></label>
+  <label class="f">Lieferant<input name="lief" list="liefL" value="${esc(a.lief||"")}">${liefList()}</label>
   <label class="f">Kategorie<select name="kat">${KAT.map(k=>`<option ${a.kat===k?"selected":""}>${k}</option>`).join("")}</select></label>
   <label class="f">Betrag brutto € *<input name="brutto" inputmode="decimal" value="${a.brutto!==undefined?esc(String(a.brutto).replace(".",",")):""}" required></label>
   <label class="f">MwSt-Satz %<input name="mwst" inputmode="decimal" value="${esc(String(a.mwst??19).replace(".",","))}"></label></div>
@@ -1570,11 +1588,14 @@ function vAuswertung(){const y=ui.year,A=auswertung(y),ku=DB.praxis.kleinunterne
   const years=[...new Set([new Date().getFullYear(),...DB.rechnungen.map(r=>+r.datum.slice(0,4)),...DB.ausgaben.map(a=>+a.datum.slice(0,4))])].sort().reverse();
   const MN=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
   return `<h1>Auswertung für das Finanzamt</h1><p class="sub">Einnahmen nach Zahlungsdatum, Ausgaben nach Belegdatum (Einnahmen-Überschuss-Rechnung).</p>
-  <div class="bar"><label class="f" style="flex-direction:row;align-items:center;gap:10px">Jahr <select id="yr" style="min-height:var(--tap);border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--panel)">${years.map(v=>`<option ${v===y?"selected":""}>${v}</option>`).join("")}</select></label><span class="spacer"></span><button class="btn" data-act="copyAusw">Zahlen kopieren</button><button class="btn" data-act="csvAusw">CSV speichern</button></div>
+  <div class="bar"><label class="f" style="flex-direction:row;align-items:center;gap:10px">Jahr <select id="yr" style="min-height:var(--tap);border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--panel)">${years.map(v=>`<option ${v===y?"selected":""}>${v}</option>`).join("")}</select></label><span class="spacer"></span><button class="btn" data-act="copyAusw">Zahlen kopieren</button></div>
   <div class="stats"><div class="stat"><div class="k">Einnahmen</div><div class="v">${eur(ku?A.eB:A.eN)}</div></div><div class="stat"><div class="k">Ausgaben</div><div class="v">${eur(ku?A.aB:A.aN)}</div></div><div class="stat"><div class="k">Überschuss (Gewinn)</div><div class="v" style="color:${ue<0?"var(--bad)":"var(--good)"}">${eur(ue)}</div></div></div>
   ${ku?"":`<p class="sub">Beträge netto, ohne Umsatzsteuer. Brutto Einnahmen ${eur(A.eB)}, enthaltene Umsatzsteuer ${eur(A.eM)}; Ausgaben brutto ${eur(A.aB)}, Vorsteuer ${eur(A.aM)}.</p>`}
+  <h2>Einnahmen und Ausgaben je Monat</h2><div class="card"><div class="lg"><span><i style="background:var(--s1)"></i>Einnahmen</span><span><i style="background:var(--s2)"></i>Ausgaben</span><span style="color:var(--muted)">Beträge brutto in €</span></div>${A.mon.some(m=>m.e||m.a)?chartMon(A.mon):'<div class="empty">Noch keine Daten für dieses Jahr.</div>'}</div>
+  <h2>Nach Quartal</h2><div class="card tw"><table><thead><tr><th>Quartal</th><th class="r">Einnahmen</th><th class="r">Ausgaben</th><th class="r">Saldo</th></tr></thead><tbody>${[0,1,2,3].map(i=>{const q=A.mon.slice(i*3,i*3+3),e=r2(q.reduce((x,m)=>x+m.e,0)),a=r2(q.reduce((x,m)=>x+m.a,0));return `<tr><td>${i+1}. Quartal</td><td class="r">${num(e)}</td><td class="r">${num(a)}</td><td class="r">${num(r2(e-a))}</td></tr>`}).join("")}</tbody></table></div>
   <h2>Nach Monat</h2><div class="card tw"><table><thead><tr><th>Monat</th><th class="r">Einnahmen</th><th class="r">Ausgaben</th><th class="r">Saldo</th></tr></thead><tbody>${A.mon.map(m=>`<tr><td>${MN[m.m-1]}</td><td class="r">${num(m.e)}</td><td class="r">${num(m.a)}</td><td class="r">${num(r2(m.e-m.a))}</td></tr>`).join("")}<tr class="tot"><td>Summe</td><td class="r">${num(A.eB)}</td><td class="r">${num(A.aB)}</td><td class="r">${num(r2(A.eB-A.aB))}</td></tr></tbody></table></div>
   <h2>Ausgaben nach Kategorie</h2><div class="card tw"><table><tbody>${Object.keys(A.kat).length?Object.entries(A.kat).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${num(v)}</td></tr>`).join(""):'<tr><td class="empty">Keine Ausgaben.</td></tr>'}</tbody></table></div>
+  <h2>Export für den Steuerberater</h2><div class="card"><p class="sub" style="margin-top:0">Tabellen im CSV-Format (öffnen mit Excel oder Numbers). Sie enthalten keine Patientennamen.</p><div class="bar" style="margin:0"><button class="btn" data-act="csvEin">Einnahmen ${y}</button><button class="btn" data-act="csvAus">Ausgaben ${y}</button><button class="btn" data-act="csvKasseJ">Kassenbuch ${y}</button><button class="btn" data-act="csvAusw">Alles zusammen</button></div></div>
   <h2>Einzelnachweis Einnahmen</h2><div class="card tw"><table><thead><tr><th>Bezahlt am</th><th>Rechnung</th><th>Zahlart</th><th class="r">Betrag</th></tr></thead><tbody>${A.inc.map(r=>`<tr><td>${dt(r.bezahlt)}</td><td>${esc(r.nr)}</td><td>${esc(r.zahlart||"")}</td><td class="r">${num(sums(r).brutto)}</td></tr>`).join("")||'<tr><td colspan="4" class="empty">Keine Einnahmen.</td></tr>'}</tbody></table></div>`}
 function csvAusw(){const A=auswertung(ui.year);const rows=[["Typ","Datum","Beleg","Beschreibung","Kategorie","Brutto"]];
   A.inc.forEach(r=>rows.push(["Einnahme",r.bezahlt,r.nr,"Rechnung",r.zahlart||"",num(sums(r).brutto)]));
@@ -1587,6 +1608,7 @@ function vEinst(){const P=DB.praxis,f=(l,n,x="")=>`<label class="f ${x}">${l}<in
   <form data-form="praxis" class="card"><div class="grid">${f("Praxisname","name","wide")}${f("Inhaberin / Inhaber","inhaber")}${f("Straße, Nr.","strasse")}${f("PLZ","plz")}${f("Ort","ort")}${f("Telefon","telefon")}${f("E-Mail","email")}${f("Steuernummer","steuernr")}${f("Bank","bank")}${f("IBAN","iban")}${f("BIC","bic")}${f("Kontoinhaber (für GiroCode, falls abweichend)","kontoinhaber")}
   <label class="f">Zahlungsziel (Tage)<input name="ziel" inputmode="numeric" value="${P.ziel}"></label>
   <label class="f wide">Fußzeile auf der Rechnung<input name="fusszeile" value="${esc(P.fusszeile||"")}"></label>
+  <label class="f wide">Text der Datenschutz-Einwilligung (Vorlage, bitte von Ihrem Verband oder Datenschutzbeauftragten prüfen lassen)<textarea name="einwText" style="min-height:180px">${esc(P.einwText||EINW_TEXT)}</textarea></label>
   <label class="chk wide"><input type="checkbox" name="kleinunternehmer" ${P.kleinunternehmer?"checked":""}> Kleinunternehmerregelung (§ 19 UStG, keine Umsatzsteuer ausweisen)</label></div>
   <div class="bar"><button class="btn primary" type="submit">Speichern</button></div></form>
   <h2>Logo</h2><div class="card"><p class="sub" style="margin-top:0">Das Logo erscheint oben auf jeder Rechnung und im Menü. Am besten ein Bild (PNG oder JPG) mit weißem oder transparentem Hintergrund.</p>${P.logo?`<img class="logo-prev" src="${P.logo}" alt="Aktuelles Logo">`:""}<div class="bar" style="margin:0"><label class="btn primary" style="cursor:pointer">${P.logo?"Anderes Logo wählen":"Logo auswählen"}<input id="logoF" type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>${P.logo?'<button class="btn danger" data-act="noLogo">Logo entfernen</button>':""}</div></div>
@@ -1670,6 +1692,150 @@ function drawFotos(){const g=$("#fotoGrid");if(!g)return;g.innerHTML=befFotos.ma
 function loadFoto(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const m=1200,k=Math.min(1,m/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",.78))};im.onerror=()=>{URL.revokeObjectURL(u);rej()};im.src=u})}
 function lightbox(src,cap){const e=document.createElement("div");e.className="lb";e.innerHTML=`<img src="${src}" alt=""><div>${esc(cap||"")} · Zum Schließen tippen</div>`;e.onclick=()=>e.remove();document.body.appendChild(e)}
 
+
+/* ---------- v5: Mehr-Menü ---------- */
+const MON=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+const numShort=n=>String(Math.round(pnum(n)*100)/100).replace(".",",");
+const csvRow=r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(";");
+const csvOut=(name,rows)=>download(name,"﻿"+rows.map(csvRow).join("\n"),"text/csv");
+function vMehr(){const it=[["preise","Preise","tag"],["ausgaben","Ausgaben","wallet"],["lieferanten","Lieferanten","users"],["kasse","Kassenbuch","kasse"],["lager","Lager","lager"],["geraete","Geräte & Hygiene","geraete"],["auswertung","Auswertung","chart"],["einstellungen","Einstellungen","gear"]];
+  return `<h1>Mehr</h1><p class="sub">Weitere Bereiche der Praxis.</p><div class="more">${it.map(([k,l,i])=>`<button class="mbtn" data-go="${k}">${ic(i)}<span>${esc(l)}</span></button>`).join("")}</div>`}
+function hinweise(){const h=[],low=DB.artikel.filter(a=>pnum(a.min)>0&&pnum(a.bestand)<=pnum(a.min));
+  if(low.length)h.push(`<div class="note" data-go="lager" style="cursor:pointer"><b>Nachbestellen:</b> ${low.map(a=>esc(a.bez)).join(", ")}</div>`);
+  const w=DB.geraete.filter(g=>{const f=wartungFaellig(g);return f&&f<=addDays(today(),14)});
+  if(w.length)h.push(`<div class="note" data-go="geraete" style="cursor:pointer"><b>Wartung fällig:</b> ${w.map(g=>esc(g.bez)+" ("+dt(wartungFaellig(g))+")").join(", ")}</div>`);
+  return h.join("")}
+
+/* ---------- v5: Anamnese und Einwilligung ---------- */
+const VORERK=["Diabetes mellitus","Durchblutungsstörung (pAVK)","Neuropathie","Rheuma / Arthritis","Gicht","Herz-Kreislauf-Erkrankung","Bluthochdruck","Niereninsuffizienz","Gerinnungsstörung / Blutverdünner","Immunschwäche","Krebserkrankung","Lymphödem","Infektionskrankheit (Hygiene)","Schwangerschaft"];
+const EINW_TEXT="Ich willige ein, dass die Praxis (siehe oben) meine personenbezogenen Daten sowie meine Gesundheitsdaten (zum Beispiel Anamnese, Befunde, Fotos zur Dokumentation, Behandlungs- und Rechnungsdaten) zum Zweck der Behandlung, der Dokumentation und der Abrechnung erhebt, speichert und verarbeitet (Art. 6 Abs. 1 lit. b und Art. 9 Abs. 2 lit. a und h DSGVO).\n\nDie Daten werden ausschließlich auf dem Gerät der Praxis gespeichert und nicht ohne meine Zustimmung an Dritte weitergegeben, außer wenn dies für die Abrechnung, die Zusammenarbeit mit meinem behandelnden Arzt oder aufgrund gesetzlicher Pflichten erforderlich ist.\n\nDie Daten werden entsprechend den gesetzlichen Aufbewahrungsfristen aufbewahrt und danach gelöscht.\n\nIch habe das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und Datenübertragbarkeit sowie das Recht, mich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Ich kann diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen. Die Einwilligung ist freiwillig; ohne sie ist eine Behandlung jedoch nicht möglich.";
+function patExtra(p){const a=p.anam,e=p.einw;
+  return `<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr));margin-top:18px">
+  <div class="card"><b>Anamnese</b>${a?`<div class="s" style="color:var(--muted);margin:6px 0">erhoben am ${dt(a.datum)}<br>Allergien: ${esc(a.allergien||"keine angegeben")}<br>Medikamente: ${esc(a.med||"keine angegeben")}<br>Vorerkrankungen: ${esc((a.vor||[]).join(", ")||"keine angegeben")}${a.sonst?"<br>Sonstiges: "+esc(a.sonst):""}</div>`:'<div style="color:var(--muted);margin:6px 0">Noch nicht erfasst.</div>'}<div class="bar" style="margin:8px 0 0"><button class="btn small ${a?"":"primary"}" data-act="editAnam" data-id="${p.id}">${a?"Bearbeiten":"Anamnese erfassen"}</button></div></div>
+  <div class="card"><b>Datenschutz-Einwilligung</b><div style="color:var(--muted);margin:6px 0">${e?"Unterschrieben am "+dt(e.datum):"Noch keine Unterschrift."}</div><div class="bar" style="margin:8px 0 0"><button class="btn small ${e?"":"primary"}" data-go="einw" data-id="${p.id}">${e?"Ansehen / Drucken":"Unterschrift einholen"}</button></div></div></div>`}
+function anamForm(p){const a=p.anam||{};return `<form data-form="anam" data-id="${p.id}"><div class="grid">
+  <label class="f wide">Erhoben am<input type="date" name="datum" value="${a.datum||today()}" required></label>
+  <label class="f wide">Allergien / Unverträglichkeiten<input name="allergien" value="${esc(a.allergien||"")}" placeholder="z. B. Latex, Pflaster, Penicillin"></label>
+  <label class="f wide">Medikamente<textarea name="med" placeholder="z. B. Metformin, ASS 100, Marcumar">${esc(a.med||"")}</textarea></label>
+  <div style="grid-column:1/-1"><div style="font-size:14px;color:var(--muted);margin-bottom:4px">Vorerkrankungen / Risiken</div><div class="chips">${VORERK.map(v=>`<label class="chip"><input type="checkbox" name="vor" value="${esc(v)}" ${(a.vor||[]).includes(v)?"checked":""}><span>${esc(v)}</span></label>`).join("")}</div></div>
+  <label class="f wide">Sonstiges<textarea name="sonst">${esc(a.sonst||"")}</textarea></label></div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button><button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+const sig={n:0,down:false,x:0,y:0};
+function vEinw(){const p=pat(ui.id);if(!p)return"<p>Patient nicht gefunden.</p>";const P=DB.praxis,e=p.einw,txt=P.einwText||EINW_TEXT;
+  return `<div class="bar noprint"><button class="btn small" data-go="patient" data-id="${p.id}">‹ Zurück</button><span class="spacer"></span>${e?`<button class="btn" data-act="einwNeu" data-id="${p.id}">Neu unterschreiben</button><button class="btn primary" data-act="print">Drucken / PDF</button>`:""}</div>
+  <div class="paper" id="paper">${P.logo?`<div class="logo-top"><img src="${P.logo}" alt="Logo"></div>`:""}<h3>${esc(P.name)}</h3><p style="margin:2px 0 14px">${esc([P.inhaber,P.strasse,[P.plz,P.ort].filter(Boolean).join(" ")].filter(Boolean).join(", "))}</p>
+  <h3 style="font-size:17px;margin:12px 0">Einwilligung in die Verarbeitung personenbezogener Daten und Gesundheitsdaten</h3>
+  <p><b>Patient/in:</b> ${esc([p.vorname,p.nachname].filter(Boolean).join(" "))}${p.geb?", geb. "+dt(p.geb):""}</p>
+  <div style="white-space:pre-wrap">${esc(txt)}</div>
+  <div style="margin-top:24px">${e?`<img src="${e.sig}" alt="Unterschrift" style="max-width:340px;max-height:140px;display:block;border-bottom:1px solid #111"><small>${esc(P.ort||"")}${P.ort?", ":""}${dt(e.datum)} · Unterschrift Patient/in</small>`:`<canvas id="sig" class="sig" aria-label="Unterschriftsfeld"></canvas><small>Bitte hier mit dem Finger oder einem Stift unterschreiben.</small><div class="bar noprint"><button class="btn" data-act="sigClear">Löschen</button><button class="btn primary" data-act="sigSave" data-id="${p.id}">Unterschrift speichern</button></div>`}</div></div>`}
+function initSig(){const c=$("#sig");if(!c)return;const r=c.getBoundingClientRect(),k=window.devicePixelRatio||1;c.width=Math.round(r.width*k);c.height=Math.round(r.height*k);const x=c.getContext("2d");x.scale(k,k);x.lineWidth=2.4;x.lineCap="round";x.lineJoin="round";x.strokeStyle="#111";sig.n=0;sig.down=false}
+document.addEventListener("pointerdown",e=>{if(e.target.id!=="sig")return;e.preventDefault();const c=e.target;try{c.setPointerCapture(e.pointerId)}catch(_){}const r=c.getBoundingClientRect();sig.down=true;sig.x=e.clientX-r.left;sig.y=e.clientY-r.top;const x=c.getContext("2d");x.beginPath();x.moveTo(sig.x,sig.y);x.lineTo(sig.x+.1,sig.y);x.stroke();sig.n++});
+document.addEventListener("pointermove",e=>{if(!sig.down||e.target.id!=="sig")return;e.preventDefault();const c=e.target,r=c.getBoundingClientRect(),x=c.getContext("2d"),nx=e.clientX-r.left,ny=e.clientY-r.top;x.beginPath();x.moveTo(sig.x,sig.y);x.lineTo(nx,ny);x.stroke();sig.x=nx;sig.y=ny;sig.n++});
+["pointerup","pointercancel"].forEach(t=>document.addEventListener(t,()=>{sig.down=false}));
+
+/* ---------- v5: Lieferanten ---------- */
+const liefList=()=>`<datalist id="liefL">${DB.lieferanten.map(l=>`<option value="${esc(l.name)}">`).join("")}</datalist>`;
+function vLieferanten(){const y=String(new Date().getFullYear()),l=DB.lieferanten.slice().sort((a,b)=>a.name.localeCompare(b.name,"de"));
+  return `<div class="bar"><button class="btn small" data-go="ausgaben">‹ Ausgaben</button></div><h1>Lieferanten</h1><p class="sub">Einkäufe werden über den Namen mit den Ausgaben verknüpft.</p>
+  <div class="bar"><button class="btn primary" data-act="neuLief">Neuer Lieferant</button></div>
+  <div class="list">${l.length?l.map(x=>{const e=DB.ausgaben.filter(a=>a.lief===x.name&&a.datum.startsWith(y));const sum=r2(e.reduce((t,a)=>t+pnum(a.brutto),0));
+   return `<div class="row" tabindex="0" data-act="editLief" data-id="${x.id}"><div class="main"><div class="t">${esc(x.name)}</div><div class="s">${esc([x.kontakt,x.tel,x.email].filter(Boolean).join(" · "))||"Keine Kontaktdaten"}${x.kundennr?" · Kd.-Nr. "+esc(x.kundennr):""}</div>${x.tel||x.email?`<div class="acts">${x.tel?`<a class="btn small" href="tel:${esc(x.tel.replace(/[^\d+]/g,""))}">Anrufen</a>`:""}${x.email?`<a class="btn small" href="mailto:${esc(x.email)}">E-Mail</a>`:""}</div>`:""}</div><div class="amt">${eur(sum)}<div class="s" style="font-weight:400">${y}, ${e.length} Beleg${e.length===1?"":"e"}</div></div></div>`}).join(""):'<div class="empty">Noch keine Lieferanten.</div>'}</div>`}
+function liefForm(x){x=x||{};const f=(l,n,t="text")=>`<label class="f">${l}<input name="${n}" type="${t}" value="${esc(x[n]||"")}"></label>`;
+  return `<form data-form="lief" data-id="${x.id||""}"><div class="grid">${f("Name *","name")}${f("Ansprechpartner","kontakt")}${f("Telefon","tel","tel")}${f("E-Mail","email","email")}${f("Kundennummer","kundennr")}<label class="f wide">Notiz<textarea name="notiz">${esc(x.notiz||"")}</textarea></label></div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button>${x.id?`<button class="btn danger" type="button" data-act="delLief" data-id="${x.id}">Löschen</button>`:""}<button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+
+/* ---------- v5: Lager ---------- */
+function vLager(){const l=DB.artikel.slice().sort((a,b)=>a.bez.localeCompare(b.bez,"de")),low=l.filter(a=>pnum(a.min)>0&&pnum(a.bestand)<=pnum(a.min));
+  const log=DB.lagerlog.slice().sort((a,b)=>(a.datum+a.id)<(b.datum+b.id)?1:-1).slice(0,15);
+  return `<h1>Lager</h1><p class="sub">Verbrauchsmaterial mit Bestand und Mindestbestand.</p>
+  <div class="bar"><button class="btn primary" data-act="neuArt">Neuer Artikel</button><button class="btn" data-go="lieferanten">Lieferanten</button></div>
+  ${low.length?`<div class="note"><b>Nachbestellen:</b> ${low.map(a=>esc(a.bez)+" (Bestand "+numShort(a.bestand)+" "+esc(a.einheit)+", Minimum "+numShort(a.min)+")").join("; ")}</div>`:""}
+  <div class="list">${l.length?l.map(a=>`<div class="row" tabindex="0" data-act="editArt" data-id="${a.id}"><div class="main"><div class="t">${esc(a.bez)} ${low.includes(a)?'<span class="pill warn">nachbestellen</span>':""}</div><div class="s">Bestand ${numShort(a.bestand)} ${esc(a.einheit)} · Minimum ${numShort(a.min)}${a.lief?" · "+esc(a.lief):""}</div><div class="acts"><button class="btn small" data-act="lagerBew" data-id="${a.id}" data-dir="-">Entnahme</button><button class="btn small primary" data-act="lagerBew" data-id="${a.id}" data-dir="+">Zugang / Einkauf</button></div></div><div class="amt">${numShort(a.bestand)}</div></div>`).join(""):'<div class="empty">Noch keine Artikel angelegt.</div>'}</div>
+  <h2>Letzte Bewegungen</h2><div class="list">${log.length?log.map(b=>{const a=DB.artikel.find(x=>x.id===b.artikel);return `<div class="row" style="cursor:default"><div class="main"><div class="t">${esc(a?a.bez:"(gelöscht)")}</div><div class="s">${dt(b.datum)}${b.notiz?" · "+esc(b.notiz):""}</div></div><div class="amt" style="color:${b.menge<0?"var(--bad)":"var(--good)"}">${b.menge>0?"+":""}${numShort(b.menge)}</div></div>`}).join(""):'<div class="empty">Noch keine Bewegungen.</div>'}</div>`}
+function artForm(a){a=a||{};return `<form data-form="art" data-id="${a.id||""}"><div class="grid">
+  <label class="f wide">Bezeichnung *<input name="bez" value="${esc(a.bez||"")}" required></label>
+  <label class="f">Einheit<select name="einheit">${["Stück","Packung","Paar","Flasche","Rolle","ml","g"].map(o=>`<option ${(a.einheit||"Stück")===o?"selected":""}>${o}</option>`).join("")}</select></label>
+  <label class="f">Bestand${a.id?"":" (Anfang)"}<input name="bestand" inputmode="decimal" value="${esc(numShort(a.bestand||0))}"></label>
+  <label class="f">Mindestbestand<input name="min" inputmode="decimal" value="${esc(numShort(a.min||0))}"></label>
+  <label class="f">Lieferant<input name="lief" list="liefL" value="${esc(a.lief||"")}">${liefList()}</label>
+  <label class="f wide">Notiz<input name="notiz" value="${esc(a.notiz||"")}"></label></div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button>${a.id?`<button class="btn danger" type="button" data-act="delArt" data-id="${a.id}">Löschen</button>`:""}<button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+function bewForm(a,dir){const z=dir==="+";return `<form data-form="bew" data-id="${a.id}" data-dir="${dir}"><p class="sub">${esc(a.bez)} · aktuell ${numShort(a.bestand)} ${esc(a.einheit)}</p><div class="grid">
+  <label class="f">Menge *<input name="menge" inputmode="decimal" required></label>
+  <label class="f">Datum<input type="date" name="datum" value="${today()}" required></label>
+  <label class="f wide">${z?"Notiz (zum Beispiel Lieferschein)":"Verwendung (zum Beispiel Patient)"}<input name="notiz"></label>
+  ${z?`<label class="chk wide" style="grid-column:1/-1"><input type="checkbox" name="alsAusg" checked> Einkauf auch unter Ausgaben verbuchen</label>
+  <label class="f">Betrag brutto € (gesamt)<input name="brutto" inputmode="decimal"></label><label class="f">Beleg-Nr.<input name="beleg"></label>
+  <label class="f wide">Lieferant<input name="lief" list="liefL" value="${esc(a.lief||"")}">${liefList()}</label>`:""}</div>
+  <div class="bar"><button class="btn primary" type="submit">${z?"Zugang buchen":"Entnahme buchen"}</button><button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+
+/* ---------- v5: Geräte und Hygiene ---------- */
+const HYG_ART=["Sterilisation (Autoklav)","Desinfektion Instrumente","Wartung / Prüfung Gerät","Sporentest / Indikator","Reinigung Gerät","Sonstiges"];
+function wartungFaellig(g){if(!g.intervall||!g.letzte)return null;const d=new Date(g.letzte+"T12:00:00");d.setMonth(d.getMonth()+(+g.intervall));return d.toISOString().slice(0,10)}
+const geraet=id=>DB.geraete.find(g=>g.id===id);
+function hygRow(h){const g=geraet(h.geraet);return `<div class="row" tabindex="0" data-act="editHyg" data-id="${h.id}"><div class="main"><div class="t">${esc(h.art)}${h.ergebnis&&h.ergebnis!=="in Ordnung"?' <span class="pill bad">auffällig</span>':""}</div><div class="s">${dt(h.datum)} ${esc(h.zeit||"")}${g?" · "+esc(g.bez):""}${h.charge?" · Charge "+esc(h.charge):""}${h.programm?" · "+esc(h.programm):""}</div></div></div>`}
+function vGeraete(){const gl=DB.geraete.slice().sort((a,b)=>a.bez.localeCompare(b.bez,"de")),hl=DB.hygiene.slice().sort((a,b)=>(a.datum+(a.zeit||"")+a.id)<(b.datum+(b.zeit||"")+b.id)?1:-1).slice(0,25);
+  return `<h1>Geräte &amp; Hygiene</h1><p class="sub">Gerätebuch, Wartung und Nachweis der Instrumentenaufbereitung.</p>
+  <div class="bar"><h2 style="margin:0">Geräte</h2><span class="spacer"></span><button class="btn primary small" data-act="neuGer">Neues Gerät</button></div>
+  <div class="list">${gl.length?gl.map(g=>{const f=wartungFaellig(g),due=f&&f<=today(),soon=f&&!due&&f<=addDays(today(),30);return `<div class="row" tabindex="0" data-act="editGer" data-id="${g.id}"><div class="main"><div class="t">${esc(g.bez)} ${due?'<span class="pill bad">Wartung fällig</span>':soon?'<span class="pill warn">bald fällig</span>':""}</div><div class="s">${esc([g.typ,g.seriennr?"SN "+g.seriennr:""].filter(Boolean).join(" · "))}${f?" · nächste Wartung "+dt(f):g.intervall?" · noch keine Wartung eingetragen":""}</div><div class="acts"><button class="btn small" data-act="wartung" data-id="${g.id}">Wartung erfassen</button></div></div></div>`}).join(""):'<div class="empty">Noch keine Geräte (zum Beispiel Autoklav, Fräsgerät).</div>'}</div>
+  <div class="bar" style="margin-top:22px"><h2 style="margin:0">Hygiene-Protokoll</h2><span class="spacer"></span><button class="btn small" data-go="hygdruck">Nachweis drucken</button><button class="btn small" data-act="hygCsv">CSV</button><button class="btn primary small" data-act="neuHyg">Neuer Eintrag</button></div>
+  <div class="list">${hl.length?hl.map(hygRow).join(""):'<div class="empty">Noch keine Einträge.</div>'}</div>`}
+function gerForm(g){g=g||{};const f=(l,n,t="text")=>`<label class="f">${l}<input name="${n}" type="${t}" value="${esc(g[n]||"")}"></label>`;
+  return `<form data-form="ger" data-id="${g.id||""}"><div class="grid">${f("Bezeichnung *","bez")}${f("Typ (zum Beispiel Autoklav)","typ")}${f("Seriennummer","seriennr")}${f("Kaufdatum","kauf","date")}
+  <label class="f">Wartung alle … Monate<input name="intervall" inputmode="numeric" value="${esc(g.intervall||"")}" placeholder="z. B. 12"></label>${f("Letzte Wartung","letzte","date")}</div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button>${g.id?`<button class="btn danger" type="button" data-act="delGer" data-id="${g.id}">Löschen</button>`:""}<button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+function hygForm(h,pre){h=h||pre||{};const d=h.datum||today(),n=DB.hygiene.filter(x=>x.datum===d).length+1;
+  return `<form data-form="hyg" data-id="${h.id||""}"><div class="grid">
+  <label class="f">Datum<input type="date" name="datum" value="${d}" required></label><label class="f">Uhrzeit<input type="time" name="zeit" value="${h.zeit||new Date().toTimeString().slice(0,5)}"></label>
+  <label class="f wide">Art<select name="art">${HYG_ART.map(o=>`<option ${h.art===o?"selected":""}>${o}</option>`).join("")}</select></label>
+  <label class="f wide">Gerät<select name="geraet"><option value="">–</option>${DB.geraete.map(g=>`<option value="${g.id}" ${h.geraet===g.id?"selected":""}>${esc(g.bez)}</option>`).join("")}</select></label>
+  <label class="f">Chargen-Nr.<input name="charge" value="${esc(h.charge??(d.replace(/-/g,"")+"-"+String(n).padStart(2,"0")))}"></label><label class="f">Programm<input name="programm" value="${esc(h.programm||"")}" placeholder="z. B. 134 °C, 5 Min."></label>
+  <label class="f wide">Instrumente / Beschreibung<textarea name="instr" placeholder="z. B. 2 Zangen, 3 Fräser, 1 Nagelschere">${esc(h.instr||"")}</textarea></label>
+  <label class="f">Ergebnis<select name="ergebnis">${["in Ordnung","Auffällig / wiederholen"].map(o=>`<option ${h.ergebnis===o?"selected":""}>${o}</option>`).join("")}</select></label>
+  <label class="f">Durchgeführt von<input name="von" value="${esc(h.von??DB.praxis.inhaber??"")}"></label>
+  <label class="f wide">Bemerkung<input name="notiz" value="${esc(h.notiz||"")}"></label></div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button>${h.id?`<button class="btn danger" type="button" data-act="delHyg" data-id="${h.id}">Löschen</button>`:""}<button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+function vHygDruck(){const y=ui.year,P=DB.praxis,l=DB.hygiene.filter(h=>h.datum.startsWith(String(y))).sort((a,b)=>(a.datum+(a.zeit||""))<(b.datum+(b.zeit||""))?-1:1);
+  const years=[...new Set([new Date().getFullYear(),...DB.hygiene.map(h=>+h.datum.slice(0,4))])].sort().reverse();
+  return `<div class="bar noprint"><button class="btn small" data-go="geraete">‹ Zurück</button><label class="f" style="flex-direction:row;align-items:center;gap:8px">Jahr <select id="yr" style="min-height:var(--tap);border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--panel)">${years.map(v=>`<option ${v===y?"selected":""}>${v}</option>`).join("")}</select></label><span class="spacer"></span><button class="btn primary" data-act="print">Drucken / PDF</button></div>
+  <div class="paper" id="paper">${P.logo?`<div class="logo-top"><img src="${P.logo}" alt="Logo"></div>`:""}<h3>${esc(P.name)}</h3><p style="margin:2px 0 12px">Hygiene- und Sterilisationsprotokoll ${y}</p>
+  <table class="sm"><thead><tr><th>Datum</th><th>Art</th><th>Gerät</th><th>Charge</th><th>Programm</th><th>Instrumente</th><th>Ergebnis</th><th>Von</th></tr></thead><tbody>${l.map(h=>{const g=geraet(h.geraet);return `<tr><td>${dt(h.datum)}<br>${esc(h.zeit||"")}</td><td>${esc(h.art)}</td><td>${esc(g?g.bez:"")}</td><td>${esc(h.charge||"")}</td><td>${esc(h.programm||"")}</td><td>${esc(h.instr||"")}${h.notiz?"<br><small>"+esc(h.notiz)+"</small>":""}</td><td>${esc(h.ergebnis||"")}</td><td>${esc(h.von||"")}</td></tr>`}).join("")||'<tr><td colspan="8">Keine Einträge.</td></tr>'}</tbody></table>
+  <p style="margin-top:26px"><small>Datum, Unterschrift: ______________________________</small></p></div>`}
+
+/* ---------- v5: Kassenbuch ---------- */
+const KASSE_ART=[["ausgabe","Barausgabe (Betriebsausgabe)",-1],["einlage","Privateinlage",1],["entnahme","Privatentnahme",-1],["bank_ein","Einzahlung auf Bankkonto",-1],["bank_aus","Abhebung vom Bankkonto",1]];
+function kasseLines(){const L=[];DB.rechnungen.filter(r=>r.bezahlt&&!r.storno&&r.zahlart==="Bar").forEach(r=>L.push({datum:r.bezahlt,text:"Rechnung "+r.nr+" · "+patName(pat(r.patient)),betrag:sums(r).brutto,auto:true,rid:r.id,beleg:r.nr}));
+  DB.kasse.forEach(k=>{const a=KASSE_ART.find(x=>x[0]===k.art);L.push({datum:k.datum,text:(a?a[1]:k.art)+(k.text?": "+k.text:""),betrag:r2(pnum(k.betrag)*(a?a[2]:1)),id:k.id,beleg:k.beleg||""})});
+  return L.sort((a,b)=>a.datum<b.datum?-1:a.datum>b.datum?1:0)}
+function kasseRun(von,bis){const all=kasseLines();let s=pnum(DB.praxis.kasseAnfang);all.filter(l=>l.datum<von).forEach(l=>{s=r2(s+l.betrag)});const start=s;
+  const lines=all.filter(l=>l.datum>=von&&l.datum<=bis).map(l=>{s=r2(s+l.betrag);return{...l,saldo:s}});return{start,lines,end:s}}
+function vKasse(){if(!ui.km)ui.km=today().slice(0,7);const m=ui.km,R=kasseRun(m+"-01",m+"-31"),ein=r2(R.lines.filter(l=>l.betrag>0).reduce((t,l)=>t+l.betrag,0)),aus=r2(R.lines.filter(l=>l.betrag<0).reduce((t,l)=>t+l.betrag,0));
+  const nm=new Date(m+"-15T12:00:00").toLocaleDateString("de-DE",{month:"long",year:"numeric"});
+  return `<h1>Kassenbuch</h1><p class="sub">Alle Barbewegungen. Barzahlungen von Rechnungen werden automatisch übernommen.</p>
+  <div class="bar"><button class="btn small" data-act="monPrev" aria-label="Vorheriger Monat">‹</button><b style="min-width:150px;text-align:center">${nm}</b><button class="btn small" data-act="monNext" aria-label="Nächster Monat">›</button><span class="spacer"></span><button class="btn primary" data-act="neuKasse">Neue Buchung</button></div>
+  <div class="stats"><div class="stat"><div class="k">Anfangsbestand</div><div class="v">${eur(R.start)}</div></div><div class="stat"><div class="k">Einnahmen</div><div class="v">${eur(ein)}</div></div><div class="stat"><div class="k">Ausgaben</div><div class="v">${eur(-aus)}</div></div><div class="stat"><div class="k">Endbestand</div><div class="v">${eur(R.end)}</div></div></div>
+  <div class="card tw"><table><thead><tr><th>Datum</th><th>Text</th><th>Beleg</th><th class="r">Betrag</th><th class="r">Saldo</th></tr></thead><tbody>${R.lines.map(l=>`<tr ${l.auto?`data-go="rechnung" data-id="${l.rid}"`:`data-act="editKasse" data-id="${l.id}"`} style="cursor:pointer"><td>${dt(l.datum)}</td><td>${esc(l.text)}</td><td>${esc(l.beleg)}</td><td class="r" style="color:${l.betrag<0?"var(--bad)":"var(--good)"}">${num(l.betrag)}</td><td class="r">${num(l.saldo)}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">Keine Buchungen in diesem Monat.</td></tr>'}</tbody></table></div>
+  <div class="bar"><button class="btn" data-act="kasseAnf">Anfangsbestand (${eur(pnum(DB.praxis.kasseAnfang))})</button><button class="btn" data-act="csvKasseM">CSV dieses Monats</button><button class="btn" data-act="print">Drucken</button></div>`}
+function kasseForm(k){k=k||{};return `<form data-form="kasse" data-id="${k.id||""}"><div class="grid">
+  <label class="f">Datum<input type="date" name="datum" value="${k.datum||today()}" required></label>
+  <label class="f">Art<select name="art">${KASSE_ART.map(([v,l])=>`<option value="${v}" ${(k.art||"ausgabe")===v?"selected":""}>${l}</option>`).join("")}</select></label>
+  <label class="f wide">Text / Verwendungszweck<input name="text" value="${esc(k.text||"")}"></label>
+  <label class="f">Betrag € *<input name="betrag" inputmode="decimal" value="${k.betrag!==undefined?esc(String(k.betrag).replace(".",",")):""}" required></label>
+  <label class="f">Beleg-Nr.<input name="beleg" value="${esc(k.beleg||"")}"></label>
+  ${k.id?"":`<label class="chk wide" style="grid-column:1/-1"><input type="checkbox" name="alsAusg" checked> Bei Barausgabe: auch unter Ausgaben verbuchen</label><label class="f wide">Kategorie (für Ausgaben)<select name="kat">${KAT.map(o=>`<option>${o}</option>`).join("")}</select></label>`}</div>
+  <div class="bar"><button class="btn primary" type="submit">Speichern</button>${k.id?`<button class="btn danger" type="button" data-act="delKasse" data-id="${k.id}">Löschen</button>`:""}<button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`}
+
+/* ---------- v5: Diagramm und CSV-Exporte ---------- */
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/p;return(f<=1?1:f<=2?2:f<=5?5:10)*p}
+function chartMon(mon){const W=640,H=250,L=52,R=8,T=10,B=28,pw=W-L-R,ph=H-T-B,mx=Math.max(1,...mon.map(m=>Math.max(m.e,m.a))),step=niceStep(mx/4),top=step*Math.ceil(mx/step),y=v=>T+ph-(v/top)*ph;let g="";
+  for(let v=0;v<=top+1e-9;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(v).toLocaleString("de-DE")}</text>`;
+  const gw=pw/12,bw=Math.min(14,gw*.34),bar=(x,v,c,tt)=>{if(v<=0)return"";const h=Math.max(2,(v/top)*ph),r=Math.min(4,h/2,bw/2),y0=T+ph;return `<path d="M${x},${y0}v${-(h-r)}a${r},${r} 0 0 1 ${r},${-r}h${bw-2*r}a${r},${r} 0 0 1 ${r},${r}v${h-r}z" fill="${c}"><title>${tt}</title></path>`};
+  mon.forEach((m,i)=>{const cx=L+gw*i+gw/2;g+=bar(cx-bw-1,m.e,"var(--s1)",`${MON[i]}: Einnahmen ${num(m.e)} €`)+bar(cx+1,m.a,"var(--s2)",`${MON[i]}: Ausgaben ${num(m.a)} €`)+`<text x="${cx}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${MON[i]}</text>`});
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Einnahmen und Ausgaben je Monat">${g}</svg>`}
+function csvEin(y){const A=auswertung(y),rows=[["Bezahlt am","Rechnungsnr.","Rechnungsdatum","Zahlart","Netto","MwSt","Brutto"]];A.inc.forEach(r=>{const s=sums(r);rows.push([r.bezahlt,r.nr,r.datum,r.zahlart||"",num(s.netto),num(s.mwst),num(s.brutto)])});return rows}
+function csvAus(y){const A=auswertung(y),rows=[["Datum","Beleg-Nr.","Beschreibung","Lieferant","Kategorie","Netto","MwSt-Satz %","Vorsteuer","Brutto"]];A.out.forEach(a=>{const b=pnum(a.brutto),m=r2(b*pnum(a.mwst)/(100+pnum(a.mwst)));rows.push([a.datum,a.beleg||"",a.beschr||"",a.lief||"",a.kat,num(r2(b-m)),num(pnum(a.mwst)),num(m),num(b)])});return rows}
+function csvKasse(von,bis){const R=kasseRun(von,bis),rows=[["Datum","Text","Beleg","Betrag","Saldo"],["","Anfangsbestand","",""  ,num(R.start)]];R.lines.forEach(l=>rows.push([l.datum,(l.auto?l.text.replace(/ · .*$/," (Rechnung)"):l.text),l.beleg,num(l.betrag),num(l.saldo)]));rows.push(["","Endbestand","","",num(R.end)]);return rows}
+
 /* ---------- Ereignisse ---------- */
 document.addEventListener("click",async e=>{
   const g=e.target.closest("[data-go]");if(g&&!e.target.closest("[data-act]")){const v=g.dataset.go;if(v==="rechnung"){const r=DB.rechnungen.find(x=>x.id===g.dataset.id)||draft;draft=JSON.parse(JSON.stringify(r));draft.neu=false}nav(v,g.dataset.id||null);return}
@@ -1679,6 +1845,34 @@ document.addEventListener("click",async e=>{
   if(act==="bg"){if(e.target===a)closeSheet();return}
   switch(act){
   case"closeSheet":closeSheet();break;
+  case"editAnam":sheet(anamForm(pat(id)),"Anamnese");break;
+  case"einwNeu":confirmBox("Die vorhandene Unterschrift löschen und neu unterschreiben lassen?","Neu unterschreiben",()=>{mutate(d=>{delete d.patienten.find(p=>p.id===id).einw});render()});break;
+  case"sigClear":initSig();break;
+  case"sigSave":{const c=$("#sig");if(!c||sig.n<8){toast("Bitte zuerst unterschreiben");break}mutate(d=>{const p=d.patienten.find(x=>x.id===id);p.einw={datum:today(),sig:c.toDataURL("image/png")};p.dsgvo=true});render();toast("Unterschrift gespeichert");break}
+  case"neuLief":sheet(liefForm(),"Neuer Lieferant");break;
+  case"editLief":sheet(liefForm(DB.lieferanten.find(x=>x.id===id)),"Lieferant");break;
+  case"delLief":confirmBox("Lieferant löschen? Bereits erfasste Ausgaben bleiben erhalten.","Löschen",()=>{mutate(d=>d.lieferanten=d.lieferanten.filter(x=>x.id!==id));render()});break;
+  case"neuArt":sheet(artForm(),"Neuer Artikel");break;
+  case"editArt":sheet(artForm(DB.artikel.find(x=>x.id===id)),"Artikel");break;
+  case"delArt":confirmBox("Artikel samt Bewegungen löschen?","Löschen",()=>{mutate(d=>{d.artikel=d.artikel.filter(x=>x.id!==id);d.lagerlog=d.lagerlog.filter(x=>x.artikel!==id)});render()});break;
+  case"lagerBew":sheet(bewForm(DB.artikel.find(x=>x.id===id),a.dataset.dir),a.dataset.dir==="+"?"Zugang / Einkauf":"Entnahme");break;
+  case"neuGer":sheet(gerForm(),"Neues Gerät");break;
+  case"editGer":sheet(gerForm(geraet(id)),"Gerät");break;
+  case"delGer":confirmBox("Gerät löschen? Protokolleinträge bleiben erhalten.","Löschen",()=>{mutate(d=>d.geraete=d.geraete.filter(x=>x.id!==id));render()});break;
+  case"wartung":sheet(hygForm(null,{art:"Wartung / Prüfung Gerät",geraet:id,charge:""}),"Wartung erfassen");break;
+  case"neuHyg":sheet(hygForm(null,{art:HYG_ART[0]}),"Neuer Hygiene-Eintrag");break;
+  case"editHyg":sheet(hygForm(DB.hygiene.find(x=>x.id===id)),"Eintrag");break;
+  case"delHyg":confirmBox("Protokolleintrag löschen?","Löschen",()=>{mutate(d=>d.hygiene=d.hygiene.filter(x=>x.id!==id));render()});break;
+  case"hygCsv":csvOut("Hygiene-Protokoll.csv",[["Datum","Uhrzeit","Art","Gerät","Charge","Programm","Instrumente","Ergebnis","Durchgeführt von","Bemerkung"],...DB.hygiene.slice().sort((x,y)=>(x.datum+(x.zeit||""))<(y.datum+(y.zeit||""))?-1:1).map(h=>[h.datum,h.zeit||"",h.art,geraet(h.geraet)?.bez||"",h.charge||"",h.programm||"",h.instr||"",h.ergebnis||"",h.von||"",h.notiz||""])]);break;
+  case"neuKasse":sheet(kasseForm(),"Neue Buchung");break;
+  case"editKasse":sheet(kasseForm(DB.kasse.find(x=>x.id===id)),"Buchung");break;
+  case"delKasse":confirmBox("Buchung löschen? Eine verknüpfte Ausgabe wird ebenfalls gelöscht.","Löschen",()=>{mutate(d=>{const k=d.kasse.find(x=>x.id===id);if(k&&k.ausgId)d.ausgaben=d.ausgaben.filter(x=>x.id!==k.ausgId);d.kasse=d.kasse.filter(x=>x.id!==id)});render()});break;
+  case"kasseAnf":sheet(`<form data-form="kasseAnf"><label class="f">Kassenbestand zu Beginn (vor der ersten Buchung) €<input name="b" inputmode="decimal" value="${esc(numShort(DB.praxis.kasseAnfang||0))}"></label><div class="bar"><button class="btn primary" type="submit">Speichern</button><button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`,"Anfangsbestand");break;
+  case"monPrev":case"monNext":{const d=new Date(ui.km+"-15T12:00:00");d.setMonth(d.getMonth()+(act==="monNext"?1:-1));ui.km=d.toISOString().slice(0,7);render();break}
+  case"csvKasseM":csvOut(`Kassenbuch-${ui.km}.csv`,csvKasse(ui.km+"-01",ui.km+"-31"));break;
+  case"csvKasseJ":csvOut(`Kassenbuch-${ui.year}.csv`,csvKasse(ui.year+"-01-01",ui.year+"-12-31"));break;
+  case"csvEin":csvOut(`Einnahmen-${ui.year}.csv`,csvEin(ui.year));break;
+  case"csvAus":csvOut(`Ausgaben-${ui.year}.csv`,csvAus(ui.year));break;
   case"dayPrev":ui.day=addDays(ui.day,-1);render();break;
   case"dayNext":ui.day=addDays(ui.day,1);render();break;
   case"dayToday":ui.day=today();render();break;
@@ -1750,6 +1944,23 @@ function commitRechnung(){if(!draft.patient){toast("Bitte einen Patienten wähle
 document.addEventListener("submit",async e=>{e.preventDefault();const f=e.target,k=f.dataset.form,d=Object.fromEntries(new FormData(f));
   if(k==="patient"){const id=f.dataset.id;mutate(db=>{const o={anrede:d.anrede,vorname:d.vorname.trim(),nachname:d.nachname.trim(),geb:d.geb,strasse:d.strasse,plz:d.plz,ort:d.ort,telefon:d.telefon,email:d.email,kasse:d.kasse,hinweis:d.hinweis,diabetes:!!d.diabetes,dsgvo:!!d.dsgvo};
     if(id){Object.assign(db.patienten.find(p=>p.id===id),o)}else{o.id=uid();db.patienten.push(o);ui.id=o.id}});closeSheet();if(id)render();else nav("patient",ui.id);toast("Gespeichert")}
+  if(k==="anam"){const id=f.dataset.id,vor=new FormData(f).getAll("vor");mutate(db=>{const p=db.patienten.find(x=>x.id===id);p.anam={datum:d.datum,allergien:d.allergien||"",med:d.med||"",vor,sonst:d.sonst||""};if(vor.includes("Diabetes mellitus"))p.diabetes=true});closeSheet();render();toast("Anamnese gespeichert")}
+  if(k==="lief"){const id=f.dataset.id;mutate(db=>{const o={name:d.name.trim(),kontakt:d.kontakt||"",tel:d.tel||"",email:d.email||"",kundennr:d.kundennr||"",notiz:d.notiz||""};if(id)Object.assign(db.lieferanten.find(x=>x.id===id),o);else{o.id=uid();db.lieferanten.push(o)}});closeSheet();render();toast("Gespeichert")}
+  if(k==="art"){const id=f.dataset.id;mutate(db=>{const o={bez:d.bez.trim(),einheit:d.einheit,min:pnum(d.min),lief:d.lief||"",notiz:d.notiz||""},b=pnum(d.bestand);
+    if(id){const a=db.artikel.find(x=>x.id===id);if(r2(b-pnum(a.bestand))!==0)db.lagerlog.push({id:uid(),artikel:id,datum:today(),menge:r2(b-pnum(a.bestand)),notiz:"Korrektur"});Object.assign(a,o,{bestand:b})}
+    else{o.id=uid();o.bestand=b;db.artikel.push(o);if(b)db.lagerlog.push({id:uid(),artikel:o.id,datum:today(),menge:b,notiz:"Anfangsbestand"})}});closeSheet();render();toast("Gespeichert")}
+  if(k==="bew"){const id=f.dataset.id,dir=f.dataset.dir,m=pnum(d.menge);const a=DB.artikel.find(x=>x.id===id);if(m<=0){toast("Bitte eine Menge eingeben");return}
+    if(dir==="-"&&m>pnum(a.bestand)){toast("So viel ist nicht auf Lager");return}
+    mutate(db=>{const ar=db.artikel.find(x=>x.id===id);ar.bestand=r2(pnum(ar.bestand)+(dir==="+"?m:-m));db.lagerlog.push({id:uid(),artikel:id,datum:d.datum,menge:dir==="+"?m:-m,notiz:d.notiz||""});
+      if(dir==="+"){if(d.lief)ar.lief=d.lief;if(d.alsAusg&&pnum(d.brutto)>0)db.ausgaben.push({id:uid(),datum:d.datum,beleg:d.beleg||"",beschr:"Wareneinkauf: "+ar.bez+" ("+numShort(m)+" "+ar.einheit+")",lief:d.lief||"",kat:"Material / Verbrauch",brutto:pnum(d.brutto),mwst:db.praxis.kleinunternehmer?0:19})}});
+    closeSheet();render();toast(dir==="+"&&d.alsAusg&&pnum(d.brutto)>0?"Zugang gebucht und als Ausgabe erfasst":"Gebucht")}
+  if(k==="ger"){const id=f.dataset.id;mutate(db=>{const o={bez:d.bez.trim(),typ:d.typ||"",seriennr:d.seriennr||"",kauf:d.kauf||"",intervall:parseInt(d.intervall)||0,letzte:d.letzte||""};if(id)Object.assign(db.geraete.find(x=>x.id===id),o);else{o.id=uid();db.geraete.push(o)}});closeSheet();render();toast("Gespeichert")}
+  if(k==="hyg"){const id=f.dataset.id;mutate(db=>{const o={datum:d.datum,zeit:d.zeit||"",art:d.art,geraet:d.geraet||"",charge:d.charge||"",programm:d.programm||"",instr:d.instr||"",ergebnis:d.ergebnis,von:d.von||"",notiz:d.notiz||""};if(id)Object.assign(db.hygiene.find(x=>x.id===id),o);else{o.id=uid();db.hygiene.push(o)}
+    if(o.art==="Wartung / Prüfung Gerät"&&o.geraet){const g=db.geraete.find(x=>x.id===o.geraet);if(g&&(!g.letzte||o.datum>=g.letzte))g.letzte=o.datum}});closeSheet();render();toast("Eintrag gespeichert")}
+  if(k==="kasse"){const id=f.dataset.id;mutate(db=>{const o={datum:d.datum,art:d.art,text:d.text||"",betrag:Math.abs(pnum(d.betrag)),beleg:d.beleg||""};
+    if(id){const x=db.kasse.find(z=>z.id===id);Object.assign(x,o);const ag=x.ausgId&&db.ausgaben.find(z=>z.id===x.ausgId);if(ag)Object.assign(ag,{datum:o.datum,beleg:o.beleg,beschr:o.text,brutto:o.betrag})}
+    else{o.id=uid();if(o.art==="ausgabe"&&d.alsAusg){const aid=uid();o.ausgId=aid;db.ausgaben.push({id:aid,datum:o.datum,beleg:o.beleg,beschr:o.text||"Barausgabe",lief:"",kat:d.kat||"Sonstiges",brutto:o.betrag,mwst:db.praxis.kleinunternehmer?0:19})}db.kasse.push(o)}});closeSheet();render();toast("Buchung gespeichert")}
+  if(k==="kasseAnf"){mutate(db=>db.praxis.kasseAnfang=pnum(d.b));closeSheet();render()}
   if(k==="termin"){const id=f.dataset.id;mutate(db=>{const o={patient:d.patient,datum:d.datum,zeit:d.zeit||"",dauer:parseInt(d.dauer)||45,wdh:parseInt(d.wdh)||0,notiz:d.notiz||""};if(id)Object.assign(db.termine.find(t=>t.id===id),o);else{o.id=uid();o.status="geplant";db.termine.push(o)}});if(ui.view==="termine")ui.day=d.datum;closeSheet();render();toast("Termin gespeichert")}
   if(k==="befund"){const id=f.dataset.id,pid=f.dataset.pid,m=new FormData(f).getAll("m");mutate(db=>{const o={patient:pid,datum:d.datum,merk:m,notiz:d.notiz||"",massn:d.massn||"",empf:d.empf||"",fotos:befFotos.map(x=>({id:x.id||uid(),d:x.d,cap:x.cap||"Befund"}))};if(id)Object.assign(db.befunde.find(b=>b.id===id),o);else{o.id=uid();db.befunde.push(o)}});closeSheet();render();toast("Befund gespeichert")}
   if(k==="beh"){const id=f.dataset.id,pid=f.dataset.pid;const leistIds=DB.leistungen.filter(l=>d["l_"+l.id]).map(l=>l.id);
@@ -1759,7 +1970,7 @@ document.addEventListener("submit",async e=>{e.preventDefault();const f=e.target
   if(k==="pos"){const i=f.dataset.i;const o={lid:d.lid,bez:d.bez.trim(),menge:pnum(d.menge),preis:pnum(d.preis),mwst:pnum(d.mwst),rabatt:pnum(d.rabatt)};const rf=$('form[data-form="rechnung"]');if(rf)readRechnung(rf);if(i!==""&&i!==undefined)draft.pos[+i]=o;else draft.pos.push(o);closeSheet();render()}
   if(k==="rechnung"){readRechnung(f);if(commitRechnung()){render();toast("Gespeichert, Rechnung "+draft.nr)}}
   if(k==="paid"){draft.bezahlt=d.datum;draft.zahlart=d.art;closeSheet();if(!draft.neu)persistDraft();render();toast("Zahlung gebucht")}
-  if(k==="praxis"){mutate(db=>{["name","inhaber","strasse","plz","ort","telefon","email","steuernr","bank","iban","bic","kontoinhaber","fusszeile"].forEach(n=>db.praxis[n]=d[n]||"");db.praxis.ziel=parseInt(d.ziel)||14;db.praxis.kleinunternehmer=!!d.kleinunternehmer});render();toast("Gespeichert")}
+  if(k==="praxis"){mutate(db=>{["name","inhaber","strasse","plz","ort","telefon","email","steuernr","bank","iban","bic","kontoinhaber","fusszeile"].forEach(n=>db.praxis[n]=d[n]||"");db.praxis.einwText=(d.einwText||"").trim()===EINW_TEXT?"":(d.einwText||"").trim();db.praxis.ziel=parseInt(d.ziel)||14;db.praxis.kleinunternehmer=!!d.kleinunternehmer});render();toast("Gespeichert")}
   if(k==="pin"){const h=await hash(d.pin);mutate(db=>db.praxis.pinHash=h);closeSheet();render();toast("Code festgelegt")}
 });
 async function hash(s){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("fp:"+s));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}catch(_){return "x:"+btoa(s)}}
