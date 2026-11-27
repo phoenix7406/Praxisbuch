@@ -35,6 +35,9 @@ nav.side .brand small{display:block;font-weight:400;color:var(--muted);font-size
 nav.side button{display:flex;align-items:center;gap:10px;text-align:left;border:0;background:none;padding:12px 12px;border-radius:10px;min-height:var(--tap);cursor:pointer;color:var(--fg)}
 nav.side button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:650}
 nav.side .grow{flex:1}
+.logo-side{display:block;max-width:100%;max-height:64px;object-fit:contain;margin:0 0 8px}
+.logo-top{text-align:center;margin:0 0 18px}.logo-top img{max-width:60%;max-height:110px;object-fit:contain}
+.logo-prev{max-width:240px;max-height:110px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;display:block;margin:0 0 12px}
 main{flex:1;min-width:0;max-width:980px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-left,0px)) 90px max(16px,env(safe-area-inset-right,0px))}
 h1{font-size:26px;margin:0 0 4px;letter-spacing:-.01em}
 h2{font-size:18px;margin:26px 0 10px}
@@ -175,7 +178,7 @@ function render(){
   const cur=ui.view==="patient"?"patienten":ui.view==="rechnung"||ui.view==="beleg"?"rechnungen":ui.view;
   const side=NAV.map(([k,l,i])=>`<button data-go="${k}" ${cur===k?'aria-current="page"':""}>${ic(i)}${l}</button>`).join("");
   const tabs=NAV.filter(n=>n[0]!=="preise"&&n[0]!=="ausgaben").map(([k,l,i])=>`<button data-go="${k}" ${cur===k?'aria-current="page"':""}>${ic(i)}${l}</button>`).join("");
-  $("#app").innerHTML=`<nav class="side" aria-label="Hauptmenü"><div class="brand">${esc(DB.praxis.name)}<small>Praxisbuch</small></div>${side}<div class="grow"></div></nav>
+  $("#app").innerHTML=`<nav class="side" aria-label="Hauptmenü"><div class="brand">${DB.praxis.logo?`<img class="logo-side" src="${DB.praxis.logo}" alt="">`:""}${esc(DB.praxis.name)}<small>Praxisbuch</small></div>${side}<div class="grow"></div></nav>
   <main id="main">${view()}</main><nav class="tabs" aria-label="Hauptmenü">${tabs}</nav>`;
 }
 function view(){switch(ui.view){
@@ -294,7 +297,7 @@ function vBeleg(){
   const mw={};r.pos.forEach(x=>{const k=pnum(x.mwst);mw[k]=(mw[k]||0)+posMwst(x)});
   return `<div class="bar noprint"><button class="btn small" data-go="rechnung" data-id="${r.id}">‹ Zurück</button><span class="spacer"></span><button class="btn" data-act="copyBeleg">Text kopieren</button><button class="btn primary" data-act="print">Drucken / PDF</button></div>
   <p class="sub noprint">Drucken: In Safari öffnet sich der Druckdialog. Für eine PDF-Datei im Druckdialog zwei Finger auf der Vorschau auseinanderziehen, dann Teilen und „In Dateien sichern“.</p>
-  <div class="paper" id="paper"><div class="row2"><div><h3>${esc(P.name)}</h3>${esc(P.inhaber)}<br>${esc(P.strasse)}<br>${esc([P.plz,P.ort].filter(Boolean).join(" "))}<br>${esc(P.telefon)}${P.email?" · "+esc(P.email):""}${P.steuernr?"<br>Steuernr.: "+esc(P.steuernr):""}</div>
+  <div class="paper" id="paper">${P.logo?`<div class="logo-top"><img src="${P.logo}" alt="Logo"></div>`:""}<div class="row2"><div><h3>${esc(P.name)}</h3>${esc(P.inhaber)}<br>${esc(P.strasse)}<br>${esc([P.plz,P.ort].filter(Boolean).join(" "))}<br>${esc(P.telefon)}${P.email?" · "+esc(P.email):""}${P.steuernr?"<br>Steuernr.: "+esc(P.steuernr):""}</div>
   <div style="text-align:right"><b>Rechnung</b><br>Nr. ${esc(r.nr)}<br>Datum: ${dt(r.datum)}<br>Leistungsdatum: ${dt(r.leistdat)}</div></div>
   <p style="margin:26px 0 18px">${esc(p?.anrede||"")} ${esc(p?.vorname||"")} ${esc(p?.nachname||"")}<br>${esc(p?.strasse||"")}<br>${esc([p?.plz,p?.ort].filter(Boolean).join(" "))}</p>
   <table><thead><tr><th>Leistung</th><th class="r">Menge</th><th class="r">Einzelpreis</th><th class="r">Betrag</th></tr></thead><tbody>
@@ -373,6 +376,7 @@ function vEinst(){const P=DB.praxis,f=(l,n,x="")=>`<label class="f ${x}">${l}<in
   <label class="f wide">Fußzeile auf der Rechnung<input name="fusszeile" value="${esc(P.fusszeile||"")}"></label>
   <label class="chk wide"><input type="checkbox" name="kleinunternehmer" ${P.kleinunternehmer?"checked":""}> Kleinunternehmerregelung (§ 19 UStG, keine Umsatzsteuer ausweisen)</label></div>
   <div class="bar"><button class="btn primary" type="submit">Speichern</button></div></form>
+  <h2>Logo</h2><div class="card"><p class="sub" style="margin-top:0">Das Logo erscheint oben auf jeder Rechnung und im Menü. Am besten ein Bild (PNG oder JPG) mit weißem oder transparentem Hintergrund.</p>${P.logo?`<img class="logo-prev" src="${P.logo}" alt="Aktuelles Logo">`:""}<div class="bar" style="margin:0"><label class="btn primary" style="cursor:pointer">${P.logo?"Anderes Logo wählen":"Logo auswählen"}<input id="logoF" type="file" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>${P.logo?'<button class="btn danger" data-act="noLogo">Logo entfernen</button>':""}</div></div>
   <h2>Schutz mit Code</h2><div class="card"><p class="sub" style="margin-top:0">Patientendaten sind Gesundheitsdaten. Mit einem Code bleibt die App auch bei verlorenem, entsperrtem iPad geschlossen. Zusätzlich sollte das iPad selbst eine Code-Sperre haben.</p><div class="bar" style="margin:0">${P.pinHash?'<button class="btn" data-act="setPin">Code ändern</button><button class="btn danger" data-act="noPin">Code entfernen</button>':'<button class="btn primary" data-act="setPin">Code festlegen</button>'}${P.pinHash?'<button class="btn" data-act="lockNow">Jetzt sperren</button>':""}</div></div>
   <h2>Sicherung</h2><div class="card"><div class="note">Alle Daten liegen nur auf diesem iPad. Gehen Gerät oder Browserdaten verloren, sind sie weg. Bitte erstellen Sie regelmäßig eine Sicherung und legen Sie sie in iCloud Drive oder per E-Mail ab.${DB.lastBackup?`<br>Letzte Sicherung: ${new Date(DB.lastBackup).toLocaleString("de-DE")}`:"<br>Es wurde noch keine Sicherung erstellt."}</div>
   <div class="bar" style="margin-bottom:0"><button class="btn primary" data-act="backup">Sicherung erstellen</button><button class="btn" data-act="restore">Sicherung einspielen</button></div></div>
@@ -426,13 +430,16 @@ document.addEventListener("click",async e=>{
   case"doRestore":{let t=$("#rt").value.trim();const f=$("#rf").files[0];if(f)t=await f.text();try{const d=JSON.parse(t);if(!d.patienten||!d.rechnungen)throw 0;DB=d;await store.set(DB);closeSheet();nav("home");toast("Sicherung eingespielt")}catch(_){toast("Das ist keine gültige Sicherung")}break}
   case"wipe":confirmBox("Wirklich ALLE Daten löschen? Das kann nicht rückgängig gemacht werden. Erstellen Sie vorher eine Sicherung.","Alles löschen",async()=>{DB=DEFAULT();await store.set(DB);nav("home")});break;
   case"setPin":sheet(`<form data-form="pin"><label class="f">Neuer Code (4 bis 8 Ziffern)<input name="pin" inputmode="numeric" pattern="[0-9]{4,8}" autocomplete="off" required></label><div class="bar"><button class="btn primary" type="submit">Festlegen</button><button class="btn" type="button" data-act="closeSheet">Abbrechen</button></div></form>`,"Code festlegen");break;
+  case"noLogo":DB.praxis.logo="";save();render();toast("Logo entfernt");break;
   case"noPin":DB.praxis.pinHash="";save();render();toast("Code entfernt");break;
   case"lockNow":lock();break;
   }
 });
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.classList?.contains("row")){e.preventDefault();e.target.click()}if(e.key==="Escape")closeSheet()});
 document.addEventListener("input",e=>{if(e.target.id==="q"){ui.q=e.target.value;const pos=e.target.selectionStart;render();const q=$("#q");q.focus();q.setSelectionRange(pos,pos)}});
-document.addEventListener("change",e=>{
+function loadLogo(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const m=700,k=Math.min(1,m/Math.max(im.width,im.height)),w=Math.round(im.width*k),h=Math.round(im.height*k),c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.drawImage(im,0,0,w,h);URL.revokeObjectURL(u);let png=c.toDataURL("image/png");if(png.length>400000){x.globalCompositeOperation="destination-over";x.fillStyle="#fff";x.fillRect(0,0,w,h);png=c.toDataURL("image/jpeg",.85)}res(png)};im.onerror=()=>{URL.revokeObjectURL(u);rej()};im.src=u})}
+document.addEventListener("change",async e=>{
+  if(e.target.id==="logoF"&&e.target.files[0]){try{const d=await loadLogo(e.target.files[0]);mutate(db=>db.praxis.logo=d);render();toast("Logo gespeichert")}catch(_){toast("Dieses Bild konnte nicht gelesen werden")}return}
   if(e.target.id==="yr"){ui.year=+e.target.value;render()}
   if(e.target.id==="posL"){const o=e.target.selectedOptions[0];if(o&&o.value){$("#posB").value=o.textContent;$("#posP").value=String(o.dataset.p).replace(".",",");$("#posM").value=String(o.dataset.m).replace(".",",")}}
 });
